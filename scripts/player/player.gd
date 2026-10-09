@@ -1,6 +1,8 @@
 class_name Player
 extends CharacterBody2D
 
+signal died
+
 @export var move_speed: float = 200.0
 # 與攻擊目標中心點的距離，需大於雙方碰撞體相加的大小才碰得到
 @export var attack_range: float = 48.0
@@ -22,6 +24,7 @@ var _has_target: bool = false
 var _is_following_cursor: bool = false
 var _attack_target: Monster = null
 var _attack_cooldown: float = 0.0
+var _base_color: Color = Color.WHITE
 
 @onready var _polygon: Polygon2D = $Polygon2D
 @onready var _health: HealthComponent = $HealthComponent
@@ -29,6 +32,7 @@ var _attack_cooldown: float = 0.0
 
 
 func _ready() -> void:
+	_base_color = _polygon.color
 	_health.health_changed.connect(_health_bar.update_health)
 	_health.damage_taken.connect(_on_damage_taken)
 	_health.died.connect(_on_died)
@@ -74,6 +78,16 @@ func take_damage(amount: int) -> void:
 
 func is_dead() -> bool:
 	return _health.is_dead()
+
+
+func revive(spawn_position: Vector2) -> void:
+	global_position = spawn_position
+	_health.revive()
+	_polygon.color = _base_color
+	_clear_targets()
+	_attack_cooldown = 0.0
+	set_physics_process(true)
+	set_process_unhandled_input(true)
 
 
 func _process_attack(delta: float) -> void:
@@ -135,10 +149,15 @@ func _on_damage_taken(amount: int) -> void:
 func _on_died() -> void:
 	print("玩家死亡")
 	_polygon.color = DEAD_COLOR
+	_clear_targets()
+	# 死亡後不再處理移動、攻擊與輸入，revive() 會恢復
+	set_physics_process(false)
+	set_process_unhandled_input(false)
+	died.emit()
+
+
+func _clear_targets() -> void:
 	_attack_target = null
 	_has_target = false
 	_is_following_cursor = false
 	velocity = Vector2.ZERO
-	# 死亡後不再處理移動、攻擊與輸入
-	set_physics_process(false)
-	set_process_unhandled_input(false)

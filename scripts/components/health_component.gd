@@ -20,6 +20,13 @@ func is_dead() -> bool:
 	return _is_dead
 
 
+func revive() -> void:
+	current_health = max_health
+	# 重設後下次死亡才能再次發出 died
+	_is_dead = false
+	health_changed.emit(current_health, max_health)
+
+
 func take_damage(amount: int) -> void:
 	if _is_dead or amount <= 0:
 		return
