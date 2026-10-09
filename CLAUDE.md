@@ -31,6 +31,8 @@
 - StatSystem 只負責計算，不保存任何角色的資料；內部用 float 計算，不四捨五入，要取整由使用端決定。
 - 目前支援的屬性名稱（定義在 `StatSystem.STAT_NAMES`，新增屬性時兩邊都要更新）：
   `strength`、`vitality`、`life`、`damage_min`、`damage_max`、`attack_speed`、`move_speed`
+- `attack_speed` 定義為「每秒攻擊次數」，攻擊間隔（秒）= 1 ÷ `attack_speed`。
+- 角色用 `StatsComponent`（`scripts/components/stats_component.gd`）保存基礎屬性與按來源分組的修正值，最終值用 `get_stat()` 讀取；裝備等加成用 `add_source()` / `remove_source()` 加入與移除。
 - 屬性名稱不在清單內、`type` 不合法或缺少欄位的修正值，會用 `push_warning` 警告並忽略。
 
 ## 全域資料
@@ -52,7 +54,7 @@ res://
 │   └── tests/           測試場景，開啟後按 F6 單獨執行
 ├── scripts/
 │   ├── autoload/        Autoload 單例（ItemDatabase、StatSystem）
-│   ├── components/      可重複使用的元件（血量元件、血條等）
+│   ├── components/      可重複使用的元件（血量元件、屬性元件、血條等）
 │   ├── player/          玩家相關腳本
 │   ├── monsters/        怪物相關腳本
 │   ├── items/           物品相關腳本

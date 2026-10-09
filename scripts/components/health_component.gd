@@ -20,6 +20,13 @@ func is_dead() -> bool:
 	return _is_dead
 
 
+# 目前生命保持不變，但不超過新的最大值
+func set_max_health(value: int) -> void:
+	max_health = maxi(value, 1)
+	current_health = mini(current_health, max_health)
+	health_changed.emit(current_health, max_health)
+
+
 func revive() -> void:
 	current_health = max_health
 	# 重設後下次死亡才能再次發出 died

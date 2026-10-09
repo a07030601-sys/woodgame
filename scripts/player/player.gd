@@ -3,17 +3,15 @@ extends CharacterBody2D
 
 signal died
 
-@export var move_speed: float = 200.0
 # 與攻擊目標中心點的距離，需大於雙方碰撞體相加的大小才碰得到
 @export var attack_range: float = 48.0
-@export var attack_interval: float = 0.8
-@export var min_damage: int = 3
-@export var max_damage: int = 6
 
 # 與目標的距離小於此值就視為抵達，避免在目標點來回抖動
 const ARRIVE_DISTANCE: float = 4.0
 # enemies 碰撞層（第 2 層）的位元值
 const ENEMIES_LAYER_MASK: int = 1 << 1
+# attack_speed 的下限，避免算攻擊間隔時除以 0
+const MIN_ATTACK_SPEED: float = 0.01
 const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
@@ -27,6 +25,7 @@ var _attack_cooldown: float = 0.0
 var _base_color: Color = Color.WHITE
 
 @onready var _polygon: Polygon2D = $Polygon2D
+@onready var _stats: StatsComponent = $StatsComponent
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _health_bar: HealthBar = $HealthBar
 
@@ -36,7 +35,10 @@ func _ready() -> void:
 	_health.health_changed.connect(_health_bar.update_health)
 	_health.damage_taken.connect(_on_damage_taken)
 	_health.died.connect(_on_died)
-	_health_bar.update_health(_health.current_health, _health.max_health)
+	_stats.stats_changed.connect(_on_stats_changed)
+	# 最大生命由屬性元件的 life 決定，開場時補滿
+	_on_stats_changed()
+	_health.revive()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -95,8 +97,16 @@ func _process_attack(delta: float) -> void:
 		return
 	if _attack_cooldown > 0.0:
 		return
-	_attack_target.take_damage(randi_range(min_damage, max_damage))
-	_attack_cooldown = attack_interval
+	_attack_target.take_damage(_roll_damage())
+	# attack_speed 是每秒攻擊次數
+	_attack_cooldown = 1.0 / maxf(_stats.get_stat("attack_speed"), MIN_ATTACK_SPEED)
+
+
+# 屬性是 float，擲傷害時才四捨五入成整數，並確保最大值不小於最小值
+func _roll_damage() -> int:
+	var damage_min: int = roundi(_stats.get_stat("damage_min"))
+	var damage_max: int = maxi(roundi(_stats.get_stat("damage_max")), damage_min)
+	return randi_range(damage_min, damage_max)
 
 
 # 怪物死亡後會被移除，目標可能已被釋放或正等待釋放
@@ -113,6 +123,7 @@ func _move_toward(target: Vector2, stop_distance: float, delta: float) -> bool:
 		return true
 
 	# 最後一步限制速度，剛好停在停止距離上而不會衝過頭
+	var move_speed: float = _stats.get_stat("move_speed")
 	var remaining: float = distance - stop_distance
 	var step_speed: float = minf(move_speed, remaining / delta)
 	velocity = to_target / distance * step_speed
@@ -144,6 +155,10 @@ func _on_damage_taken(amount: int) -> void:
 	number.setup(amount, DAMAGE_NUMBER_COLOR)
 	number.position = global_position + DAMAGE_NUMBER_OFFSET
 	get_tree().current_scene.add_child(number)
+
+
+func _on_stats_changed() -> void:
+	_health.set_max_health(roundi(_stats.get_stat("life")))
 
 
 func _on_died() -> void:

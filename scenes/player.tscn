@@ -1,29 +1,36 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://c1nfxfig4fjlj"]
 
-[ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
-[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="2_health"]
+[ext_resource type="Script" uid="uid://cv1gxcbmjjud0" path="res://scripts/player/player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://bmmukat032huf" path="res://scripts/components/health_component.gd" id="2_health"]
 [ext_resource type="PackedScene" path="res://scenes/health_bar.tscn" id="3_health_bar"]
+[ext_resource type="Script" uid="uid://c6inrs6k070tk" path="res://scripts/components/stats_component.gd" id="4_stats"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 14.0
 
-[node name="Player" type="CharacterBody2D" groups=["player"]]
+[node name="Player" type="CharacterBody2D" unique_id=2093954764 groups=["player"]]
 collision_mask = 3
 motion_mode = 1
 script = ExtResource("1_player")
 
-[node name="Polygon2D" type="Polygon2D" parent="."]
+[node name="Polygon2D" type="Polygon2D" parent="." unique_id=84739036]
 color = Color(0.3, 0.6, 1, 1)
 polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=833085770]
 shape = SubResource("CircleShape2D_player")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=87931294]
 
-[node name="HealthComponent" type="Node" parent="."]
+[node name="StatsComponent" type="Node" parent="." unique_id=1876714304]
+script = ExtResource("4_stats")
+damage_min = 3.0
+damage_max = 6.0
+attack_speed = 1.25
+move_speed = 200.0
+
+[node name="HealthComponent" type="Node" parent="." unique_id=1533198130]
 script = ExtResource("2_health")
-max_health = 100
 
-[node name="HealthBar" parent="." instance=ExtResource("3_health_bar")]
+[node name="HealthBar" parent="." unique_id=821644394 instance=ExtResource("3_health_bar")]
 position = Vector2(0, -26)
