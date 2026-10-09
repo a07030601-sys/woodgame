@@ -1,3 +1,29 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
 
 [node name="Main" type="Node2D"]
+
+[node name="ReferenceMarkers" type="Node2D" parent="."]
+
+[node name="Marker1" type="Polygon2D" parent="ReferenceMarkers"]
+position = Vector2(-200, -120)
+color = Color(0.4, 0.4, 0.4, 1)
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
+
+[node name="Marker2" type="Polygon2D" parent="ReferenceMarkers"]
+position = Vector2(200, -120)
+color = Color(0.4, 0.4, 0.4, 1)
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
+
+[node name="Marker3" type="Polygon2D" parent="ReferenceMarkers"]
+position = Vector2(-200, 120)
+color = Color(0.4, 0.4, 0.4, 1)
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
+
+[node name="Marker4" type="Polygon2D" parent="ReferenceMarkers"]
+position = Vector2(200, 120)
+color = Color(0.4, 0.4, 0.4, 1)
+polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
