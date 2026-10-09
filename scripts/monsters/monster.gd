@@ -1,6 +1,8 @@
 class_name Monster
 extends CharacterBody2D
 
+signal died
+
 enum State { IDLE, PATROL, CHASE, ATTACK }
 
 @export var chase_speed: float = 120.0
@@ -244,4 +246,5 @@ func _on_damage_taken(amount: int) -> void:
 
 
 func _on_died() -> void:
+	died.emit()
 	queue_free()

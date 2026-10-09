@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/monster.tscn" id="2_monster"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
+[ext_resource type="Script" path="res://scripts/monsters/monster_spawner.gd" id="4_spawner"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3_main")
@@ -31,8 +32,15 @@ polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 
 [node name="Player" parent="." instance=ExtResource("1_player")]
 
-[node name="Monster" parent="." instance=ExtResource("2_monster")]
-position = Vector2(420, 0)
+[node name="MonsterSpawnerEast" type="Node2D" parent="."]
+position = Vector2(550, 0)
+script = ExtResource("4_spawner")
+monster_scene = ExtResource("2_monster")
+
+[node name="MonsterSpawnerSouth" type="Node2D" parent="."]
+position = Vector2(0, 600)
+script = ExtResource("4_spawner")
+monster_scene = ExtResource("2_monster")
 
 [node name="PlayerSpawnPoint" type="Marker2D" parent="."]
 position = Vector2(-150, 0)
