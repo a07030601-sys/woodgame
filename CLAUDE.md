@@ -42,6 +42,13 @@
   - `rare`：3～4 個詞綴，前綴與後綴各最多 2 個。
   - 詞綴依 `weight` 抽選，只選 `allowed_types` 符合的，同一件物品不重複 `group`；每條修正值在 `min` 到 `max` 之間擲出整數。
 
+- `Inventory`（`scripts/items/inventory.gd`，`RefCounted`）是背包的格子資料，不含介面，預設 10 × 4。
+  - 物品依底材的 `size` 佔用格子；位置指物品左上角那一格，x 往右、y 往下，從 0 開始。
+  - 同一件物品只會有一個位置，對已在背包裡的物品呼叫 `place()` 等於移動它。
+  - `find_free_position()` 從左上角開始，先往下再往右找。
+  - `place_or_swap()` 回傳 `{"success": bool, "swapped_item": ItemInstance}`：壓到一件時互換，壓到兩件以上或超出範圍時失敗。
+  - 內容改變時發出 `changed`；`to_dict()` / `Inventory.from_dict()` 包含每件物品與位置。
+
 ## 物品命名規則
 
 中文的修飾語放在名詞前面，底材名一律在最後。新增詞綴與字詞時都要遵守：
