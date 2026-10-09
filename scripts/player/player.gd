@@ -5,6 +5,8 @@ signal died
 
 # 與攻擊目標中心點的距離，需大於雙方碰撞體相加的大小才碰得到
 @export var attack_range: float = 48.0
+# 除錯用，任務 4-6 有掉寶後關閉：開場時在背包放幾件隨機的魔法與稀有裝備
+@export var debug_start_items: bool = true
 
 # 與目標的距離小於此值就視為抵達，避免在目標點來回抖動
 const ARRIVE_DISTANCE: float = 4.0
@@ -14,6 +16,10 @@ const ENEMIES_LAYER_MASK: int = 1 << 1
 const MIN_ATTACK_SPEED: float = 0.01
 # 除錯用，階段 4 有裝備後移除
 const DEBUG_STRENGTH_SOURCE: String = "debug_strength"
+# 除錯用，任務 4-6 有掉寶後關閉
+const DEBUG_START_ITEM_COUNT: int = 6
+# 這個群組裡的節點（例如背包畫面）可以阻止玩家用滑鼠移動或攻擊
+const WORLD_INPUT_BLOCKERS_GROUP: String = "world_input_blockers"
 const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
@@ -25,6 +31,7 @@ var _is_following_cursor: bool = false
 var _attack_target: Monster = null
 var _attack_cooldown: float = 0.0
 var _base_color: Color = Color.WHITE
+var _inventory: Inventory = Inventory.new()
 
 @onready var _polygon: Polygon2D = $Polygon2D
 @onready var _stats: StatsComponent = $StatsComponent
@@ -42,6 +49,9 @@ func _ready() -> void:
 	_on_stats_changed()
 	_health.revive()
 
+	if debug_start_items:
+		_add_debug_start_items()
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	# 除錯用，階段 4 有裝備後移除
@@ -55,6 +65,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("move_click"):
+		if _is_world_input_blocked():
+			return
 		var click_position: Vector2 = get_global_mouse_position()
 		_attack_target = _find_enemy_at(click_position)
 		if _attack_target != null:
@@ -74,7 +86,8 @@ func _physics_process(delta: float) -> void:
 	_attack_target = null
 
 	if _is_following_cursor:
-		if Input.is_action_pressed("move_click"):
+		# 按住左鍵時游標移到介面上也要停止跟隨
+		if Input.is_action_pressed("move_click") and not _is_world_input_blocked():
 			_set_target(get_global_mouse_position())
 		else:
 			_is_following_cursor = false
@@ -96,6 +109,10 @@ func is_dead() -> bool:
 
 func get_stats() -> StatsComponent:
 	return _stats
+
+
+func get_inventory() -> Inventory:
+	return _inventory
 
 
 func revive(spawn_position: Vector2) -> void:
@@ -171,6 +188,30 @@ func _on_damage_taken(amount: int) -> void:
 	number.setup(amount, DAMAGE_NUMBER_COLOR)
 	number.position = global_position + DAMAGE_NUMBER_OFFSET
 	get_tree().current_scene.add_child(number)
+
+
+func _is_world_input_blocked() -> bool:
+	for blocker: Node in get_tree().get_nodes_in_group(WORLD_INPUT_BLOCKERS_GROUP):
+		if blocker.has_method("is_blocking_world_input") and blocker.is_blocking_world_input():
+			return true
+	return false
+
+
+# 除錯用，任務 4-6 有掉寶後關閉
+func _add_debug_start_items() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.randomize()
+	var base_ids: Array[String] = ItemDatabase.get_base_ids()
+	if base_ids.is_empty():
+		return
+
+	for i: int in DEBUG_START_ITEM_COUNT:
+		var base_id: String = base_ids[rng.randi_range(0, base_ids.size() - 1)]
+		var quality: String = (
+			ItemInstance.QUALITY_MAGIC if rng.randi_range(0, 1) == 0 else ItemInstance.QUALITY_RARE
+		)
+		# 極少數組合會放不下（例如連續好幾件皮甲），放不下的那件直接略過
+		_inventory.add_item_auto(ItemGenerator.generate(base_id, quality, rng))
 
 
 func _on_stats_changed() -> void:

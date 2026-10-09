@@ -37,6 +37,13 @@ func get_modifiers() -> Array[Dictionary]:
 	if base.has("defense"):
 		modifiers.append({"stat": "defense", "value": float(defense), "type": "flat"})
 
+	modifiers.append_array(get_affix_modifiers())
+	return modifiers
+
+
+# 只回傳詞綴提供的修正值，不含底材本身的傷害或防禦
+func get_affix_modifiers() -> Array[Dictionary]:
+	var modifiers: Array[Dictionary] = []
 	for affix: Variant in affixes:
 		if typeof(affix) != TYPE_DICTIONARY:
 			continue
@@ -48,6 +55,15 @@ func get_modifiers() -> Array[Dictionary]:
 				modifiers.append(modifier.duplicate())
 
 	return modifiers
+
+
+# 背包佔用的格數 [寬, 高]，查不到底材時回傳 Vector2i.ZERO
+func get_size() -> Vector2i:
+	var base: Dictionary = ItemDatabase.get_base(base_id)
+	if base.is_empty():
+		return Vector2i.ZERO
+	var size: Array = base["size"]
+	return Vector2i(int(size[0]), int(size[1]))
 
 
 func get_base_name() -> String:

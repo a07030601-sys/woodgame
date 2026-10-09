@@ -24,6 +24,39 @@ const STAT_NAMES: Array[String] = [
 	"defense",
 ]
 
+# 屬性的中文顯示名稱，新增屬性時要一起加
+const STAT_DISPLAY_NAMES: Dictionary = {
+	"strength": "力量",
+	"vitality": "體力",
+	"life": "生命",
+	"damage_min": "最小傷害",
+	"damage_max": "最大傷害",
+	"attack_speed": "攻擊速度",
+	"move_speed": "移動速度",
+	"defense": "防禦",
+}
+
+
+# 沒有設定顯示名稱的屬性會直接回傳屬性名稱
+func get_stat_display_name(stat_name: String) -> String:
+	return STAT_DISPLAY_NAMES.get(stat_name, stat_name)
+
+
+# 把修正值轉成給玩家看的文字，例如「+5 力量」「+12% 攻擊速度」「-3 防禦」
+func format_modifier(modifier: Dictionary) -> String:
+	var value: float = float(modifier.get("value", 0.0))
+	var sign_text: String = "-" if value < 0.0 else "+"
+	var percent_text: String = "%" if modifier.get("type") == MODIFIER_PERCENT else ""
+	var stat_text: String = get_stat_display_name(str(modifier.get("stat", "")))
+	return "%s%s%s %s" % [sign_text, _format_number(absf(value)), percent_text, stat_text]
+
+
+# 整數不顯示小數點，其他最多顯示到小數第二位
+func _format_number(value: float) -> String:
+	if is_equal_approx(value, roundf(value)):
+		return str(int(roundf(value)))
+	return String.num(value, 2)
+
 
 # 回傳的 Dictionary 包含 STAT_NAMES 的每個屬性，值為 float 且不四捨五入。
 # base_stats 沒提供的屬性視為 0。

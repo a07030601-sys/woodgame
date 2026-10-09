@@ -30,11 +30,7 @@ func _init(p_width: int = DEFAULT_WIDTH, p_height: int = DEFAULT_HEIGHT) -> void
 func get_item_size(item: ItemInstance) -> Vector2i:
 	if item == null:
 		return Vector2i.ZERO
-	var base: Dictionary = ItemDatabase.get_base(item.base_id)
-	if base.is_empty():
-		return Vector2i.ZERO
-	var size: Array = base["size"]
-	return Vector2i(int(size[0]), int(size[1]))
+	return item.get_size()
 
 
 func has_item(item: ItemInstance) -> bool:
@@ -105,6 +101,13 @@ func add_item_auto(item: ItemInstance) -> bool:
 	if position == NO_POSITION:
 		return false
 	return place(item, position.x, position.y)
+
+
+# place_or_swap() 會不會成功。不改變背包內容，用來顯示放置預覽。
+func can_place_or_swap(item: ItemInstance, x: int, y: int) -> bool:
+	if not _fits_in_bounds(item, x, y):
+		return false
+	return _get_overlapping_items(item, x, y).size() <= 1
 
 
 # 放到指定位置，必要時與原本在那裡的物品互換。回傳 {"success": bool, "swapped_item": ItemInstance}：

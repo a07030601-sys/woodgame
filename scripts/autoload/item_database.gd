@@ -49,6 +49,13 @@ func get_base_count() -> int:
 	return _bases.size()
 
 
+# 所有底材的 id，順序與 bases.json 相同
+func get_base_ids() -> Array[String]:
+	var ids: Array[String] = []
+	ids.assign(_bases.keys())
+	return ids
+
+
 # 找不到時警告並回傳空的 Dictionary
 func get_affix(id: String) -> Dictionary:
 	if not _affixes.has(id):

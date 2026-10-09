@@ -49,6 +49,19 @@
   - `place_or_swap()` 回傳 `{"success": bool, "swapped_item": ItemInstance}`：壓到一件時互換，壓到兩件以上或超出範圍時失敗。
   - 內容改變時發出 `changed`；`to_dict()` / `Inventory.from_dict()` 包含每件物品與位置。
 
+## 背包介面
+
+- 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
+- `scenes/ui/inventory_screen.tscn`（`InventoryScreen`）由幾個獨立的部分組成，腳本都在 `scripts/ui/`：
+  - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
+  - `HeldItem`：「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包；之後的裝備欄和丟到地上都要共用這一個，用 `hold()` / `take()` 存取。
+  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。
+  - 面板上方的 `EquipmentArea` 是預留給裝備欄的空間。
+- 手上的物品以中心對準游標；放下時用 `InventoryGrid.get_drop_cell()` 換算左上角的格子。
+- 關閉背包時手上的物品會自動放回空位；放不下時不關閉並顯示提示。
+- 會擋住遊戲世界滑鼠操作的介面要加入群組 `world_input_blockers`，並提供 `is_blocking_world_input() -> bool`。玩家在點擊和按住左鍵跟隨游標時都會檢查，回傳 true 就不移動也不攻擊。
+- 屬性的中文名稱在 `StatSystem.STAT_DISPLAY_NAMES`；修正值轉成文字一律用 `StatSystem.format_modifier()`（例如「+5 力量」「+12% 攻擊速度」）。
+
 ## 物品命名規則
 
 中文的修飾語放在名詞前面，底材名一律在最後。新增詞綴與字詞時都要遵守：
@@ -117,6 +130,7 @@
 
 ## 待辦（暫不實作）
 
+- 任務 4-6：關閉背包時，手上的物品要留在游標上（暗黑 2 行為），點擊遊戲世界時丟到地上；手上物品的顯示要獨立於背包畫面。
 - 獨特物品（階段 7）
 - 防禦的減傷公式（階段 7）
 - 物品等級與詞綴等級需求（階段 7）

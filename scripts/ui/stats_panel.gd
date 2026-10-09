@@ -1,18 +1,6 @@
 class_name StatsPanel
 extends CanvasLayer
 
-# 屬性的顯示名稱，沒列在這裡的屬性會直接顯示英文名稱
-const STAT_LABELS: Dictionary = {
-	"strength": "力量",
-	"vitality": "體力",
-	"life": "生命",
-	"damage_min": "最小傷害",
-	"damage_max": "最大傷害",
-	"attack_speed": "攻擊速度",
-	"move_speed": "移動速度",
-	"defense": "防禦",
-}
-
 var _stats: StatsComponent = null
 # 屬性名稱 -> 顯示數值的 Label
 var _value_labels: Dictionary = {}
@@ -42,7 +30,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_rows() -> void:
 	for stat_name: String in StatSystem.STAT_NAMES:
 		var name_label: Label = Label.new()
-		name_label.text = STAT_LABELS.get(stat_name, stat_name)
+		name_label.text = StatSystem.get_stat_display_name(stat_name)
 		_grid.add_child(name_label)
 
 		var value_label: Label = Label.new()

@@ -221,6 +221,16 @@ func _test_swap() -> void:
 	result = inventory.place_or_swap(armor, 9, 0)
 	check("超出範圍時失敗", not result["success"] and not inventory.has_item(armor))
 
+	# 此時 (1, 0) 是短劍、(2, 0) 是皮帽、(7, 0) 是另一頂皮帽
+	check(
+		"can_place_or_swap 與 place_or_swap 的結果一致且不改變背包",
+		inventory.can_place_or_swap(armor, 5, 0)
+		and inventory.can_place_or_swap(armor, 7, 0)
+		and not inventory.can_place_or_swap(armor, 1, 0)
+		and not inventory.can_place_or_swap(armor, 9, 0)
+		and inventory.get_items().size() == item_count
+	)
+
 
 func _test_changed_signal() -> void:
 	var inventory: Inventory = Inventory.new()

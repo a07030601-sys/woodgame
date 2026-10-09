@@ -122,6 +122,21 @@ func _run_tests() -> void:
 		{"life": 143.0}
 	)
 
+	var all_named: bool = true
+	for stat_name: String in StatSystem.STAT_NAMES:
+		if not StatSystem.STAT_DISPLAY_NAMES.has(stat_name):
+			all_named = false
+	check("每個屬性都有中文顯示名稱", all_named)
+	_check_format({"stat": "strength", "value": 5.0, "type": "flat"}, "+5 力量")
+	_check_format({"stat": "attack_speed", "value": 12, "type": "percent"}, "+12% 攻擊速度")
+	_check_format({"stat": "defense", "value": -3, "type": "flat"}, "-3 防禦")
+	_check_format({"stat": "life", "value": 2.5, "type": "flat"}, "+2.5 生命")
+
+
+func _check_format(modifier: Dictionary, expected: String) -> void:
+	var actual: String = StatSystem.format_modifier(modifier)
+	check("修正值文字「%s」" % expected, actual == expected, "實際「%s」" % actual)
+
 
 # 只比對 expected 列出的屬性
 func _check_calculation(title: String, base_stats: Dictionary, modifiers: Array, expected: Dictionary) -> void:
