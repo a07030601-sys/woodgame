@@ -12,6 +12,9 @@ const ARRIVE_DISTANCE: float = 4.0
 # enemies 碰撞層（第 2 層）的位元值
 const ENEMIES_LAYER_MASK: int = 1 << 1
 const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
+const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
+const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
+const DAMAGE_NUMBER_COLOR: Color = Color(1.0, 0.25, 0.25, 1.0)
 # 除錯用，階段 2 怪物會攻擊後移除
 const DEBUG_DAMAGE: int = 10
 
@@ -28,6 +31,7 @@ var _attack_cooldown: float = 0.0
 
 func _ready() -> void:
 	_health.health_changed.connect(_health_bar.update_health)
+	_health.damage_taken.connect(_on_damage_taken)
 	_health.died.connect(_on_died)
 	_health_bar.update_health(_health.current_health, _health.max_health)
 
@@ -118,6 +122,14 @@ func _find_enemy_at(point: Vector2) -> Monster:
 func _set_target(target: Vector2) -> void:
 	_target_position = target
 	_has_target = true
+
+
+# 數字加到主場景而不是自己底下
+func _on_damage_taken(amount: int) -> void:
+	var number: DamageNumber = DAMAGE_NUMBER_SCENE.instantiate() as DamageNumber
+	number.setup(amount, DAMAGE_NUMBER_COLOR)
+	number.position = global_position + DAMAGE_NUMBER_OFFSET
+	get_tree().current_scene.add_child(number)
 
 
 func _on_died() -> void:

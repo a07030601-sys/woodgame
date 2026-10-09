@@ -42,12 +42,14 @@
 ```
 res://
 ├── scenes/              場景檔（.tscn），主場景為 scenes/main.tscn
+│   └── ui/              介面場景（傷害數字等）
 ├── scripts/
 │   ├── autoload/        Autoload 單例（ItemDatabase、StatSystem）
 │   ├── components/      可重複使用的元件（血量元件、血條等）
 │   ├── player/          玩家相關腳本
 │   ├── monsters/        怪物相關腳本
-│   └── items/           物品相關腳本
+│   ├── items/           物品相關腳本
+│   └── ui/              介面相關腳本
 ├── data/                JSON 資料（物品、詞綴、符文、符文之語、套裝）
 ├── assets/              美術、音效等素材
 ├── project.godot
