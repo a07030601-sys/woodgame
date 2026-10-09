@@ -21,6 +21,7 @@ const STAT_NAMES: Array[String] = [
 	"damage_max",
 	"attack_speed",
 	"move_speed",
+	"defense",
 ]
 
 

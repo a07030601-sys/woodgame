@@ -11,6 +11,7 @@ signal stats_changed
 # 每秒攻擊次數，攻擊間隔 = 1 ÷ attack_speed
 @export var attack_speed: float = 1.0
 @export var move_speed: float = 100.0
+@export var defense: float = 0.0
 
 # source_id -> 該來源的修正值 Array，格式見 StatSystem
 var _sources: Dictionary = {}
@@ -65,4 +66,5 @@ func _get_base_stats() -> Dictionary:
 		"damage_max": damage_max,
 		"attack_speed": attack_speed,
 		"move_speed": move_speed,
+		"defense": defense,
 	}

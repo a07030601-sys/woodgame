@@ -1,0 +1,56 @@
+[
+	{
+		"id": "short_sword",
+		"name": "短劍",
+		"type": "sword",
+		"slot": "weapon",
+		"size": [1, 3],
+		"max_sockets": 2,
+		"damage": [2, 5]
+	},
+	{
+		"id": "hand_axe",
+		"name": "手斧",
+		"type": "axe",
+		"slot": "weapon",
+		"size": [1, 3],
+		"max_sockets": 2,
+		"damage": [3, 6]
+	},
+	{
+		"id": "leather_cap",
+		"name": "皮帽",
+		"type": "helm",
+		"slot": "helm",
+		"size": [2, 2],
+		"max_sockets": 2,
+		"defense": [2, 4]
+	},
+	{
+		"id": "leather_armor",
+		"name": "皮甲",
+		"type": "armor",
+		"slot": "armor",
+		"size": [2, 3],
+		"max_sockets": 3,
+		"defense": [6, 10]
+	},
+	{
+		"id": "leather_gloves",
+		"name": "皮手套",
+		"type": "gloves",
+		"slot": "gloves",
+		"size": [2, 2],
+		"max_sockets": 0,
+		"defense": [1, 3]
+	},
+	{
+		"id": "leather_boots",
+		"name": "皮靴",
+		"type": "boots",
+		"slot": "boots",
+		"size": [2, 2],
+		"max_sockets": 0,
+		"defense": [1, 3]
+	}
+]

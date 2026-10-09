@@ -10,6 +10,7 @@ const STAT_LABELS: Dictionary = {
 	"damage_max": "最大傷害",
 	"attack_speed": "攻擊速度",
 	"move_speed": "移動速度",
+	"defense": "防禦",
 }
 
 var _stats: StatsComponent = null

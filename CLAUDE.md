@@ -5,7 +5,7 @@
 - 引擎：Godot 4.7.2
 - 類型：2D 俯視角、暗黑破壞神 2 風格的單機刷寶 ARPG
 - 單人開發、單機遊戲（無連線功能）
-- **目前階段：階段 3：屬性系統**
+- **目前階段：階段 4：裝備與背包**
 
 ## 程式語言
 
@@ -16,6 +16,18 @@
 
 - 物品、詞綴、符文、符文之語、套裝全部用 JSON 資料驅動，放在 `data/`，不寫死在程式裡。
 - 符文、符文之語、套裝的名稱一律自創，不沿用既有遊戲的名稱。
+
+## 物品資料
+
+- `data/bases.json`：底材清單（陣列）。每筆的欄位：
+  - `id`、`name`、`type`（`sword`、`axe`、`helm`、`armor`、`gloves`、`boots`）
+  - `slot`（`weapon`、`helm`、`armor`、`gloves`、`boots`）
+  - `size`：背包佔用格數 `[寬, 高]`；`max_sockets`：最大孔數
+  - 武器有 `damage`：`[最小, 最大]`；防具有 `defense`：`[最小, 最大]`
+- `ItemDatabase`（Autoload）啟動時讀取並檢查資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)` 查底材，用 `create_item(base_id)` 建立物品。
+- `ItemInstance`（`scripts/items/item_instance.gd`，`RefCounted`）代表一件實際的物品，欄位：`base_id`、`quality`、`sockets`、`socketed_runes`、`affixes`、`defense`（生成時擲出的防禦值）。
+  - 底材的固定資料不複製進物品，需要時用 `base_id` 查 `ItemDatabase`。
+  - `get_modifiers()` 回傳物品的所有修正值；`to_dict()` / `ItemInstance.from_dict()` 用於存檔與還原。
 
 ## 屬性計算
 
@@ -30,7 +42,7 @@
 
 - StatSystem 只負責計算，不保存任何角色的資料；內部用 float 計算，不四捨五入，要取整由使用端決定。
 - 目前支援的屬性名稱（定義在 `StatSystem.STAT_NAMES`，新增屬性時兩邊都要更新）：
-  `strength`、`vitality`、`life`、`damage_min`、`damage_max`、`attack_speed`、`move_speed`
+  `strength`、`vitality`、`life`、`damage_min`、`damage_max`、`attack_speed`、`move_speed`、`defense`
 - 主屬性的衍生效果（比例是 StatSystem 的常數）。先算出 `strength` 與 `vitality` 的最終值，再用來計算：
   - 每點 `strength` 讓 `damage_min` 與 `damage_max` 各 +1%，併入這兩個屬性的 percent 總和（`STRENGTH_DAMAGE_PERCENT_PER_POINT = 1.0`）。
   - 每點 `vitality` 讓 `life` +3，併入 `life` 的 flat 總和（`VITALITY_LIFE_PER_POINT = 3.0`）。
