@@ -87,8 +87,25 @@
 
 - 每次只做一個小功能，不主動加入沒要求的功能。
 - 完成後用繁體中文說明如何在 Godot 裡測試。
-- 測試場景可以用無視窗模式直接執行並看輸出：
-  `C:\Godot_v4.7.2-stable_win64_console.exe --headless --path . res://scenes/tests/<名稱>.tscn --quit-after 5`
+- **每次修改程式後，先用 headless 執行全部測試，全部通過才回報；有 FAIL 時先自行修正。**
+
+## 測試
+
+- 測試腳本放在 `scripts/tests/`，繼承 `TestBase`（`scripts/tests/test_base.gd`），覆寫 `_get_test_name()` 與 `_run_tests()`，用 `check(名稱, 條件, 失敗說明)` 記錄每一項。
+- 測試場景放在 `scenes/tests/`，檔名以 `_test.tscn` 結尾就會被 `run_all_tests` 自動找到並執行。
+- 在專案根目錄用 headless 執行全部測試（Godot 命令列執行檔在 `C:\Godot_v4.7.2-stable_win64_console.exe`）：
+
+  ```
+  C:\Godot_v4.7.2-stable_win64_console.exe --headless --path . --import
+  C:\Godot_v4.7.2-stable_win64_console.exe --headless --path . res://scenes/tests/run_all_tests.tscn
+  ```
+
+  - 第一行讓 Godot 重新掃描專案。新增或改名 `class_name`、新增檔案之後一定要先跑，否則腳本會找不到新類別而解析失敗。
+  - 第二行執行測試，最後印出每個測試與總計的 PASS、FAIL 數量。全部通過時結束碼為 0，有任何 FAIL 時為 1。
+  - 腳本解析失敗時測試不會自己結束，執行時要加上逾時；看到輸出有「總計：」且結束碼為 0 才算通過。
+- 單獨執行一個測試：在編輯器開啟該場景按 F6，或用
+  `C:\Godot_v4.7.2-stable_win64_console.exe --headless --path . res://scenes/tests/<名稱>_test.tscn --quit-after 5`。
+- 需要滑鼠操作或看畫面的項目無法用 headless 驗證，仍要由使用者在編輯器裡測試。
 - 等使用者測試確認後才 commit，不要自動 commit。
 
 ## 待辦（暫不實作）
@@ -103,7 +120,7 @@
 res://
 ├── scenes/              場景檔（.tscn），主場景為 scenes/main.tscn
 │   ├── ui/              介面場景（傷害數字、屬性面板等）
-│   └── tests/           測試場景，開啟後按 F6 單獨執行
+│   └── tests/           測試場景（*_test.tscn）與 run_all_tests.tscn
 ├── scripts/
 │   ├── autoload/        Autoload 單例（ItemDatabase、StatSystem）
 │   ├── components/      可重複使用的元件（血量元件、屬性元件、血條等）

@@ -1,4 +1,4 @@
-extends Node
+extends TestBase
 
 # ItemGenerator 的測試：用 F6 執行 scenes/tests/item_generator_test.tscn，結果印在輸出面板。
 # 使用固定種子，每次執行的結果都相同。
@@ -13,15 +13,19 @@ const BASE_IDS: Array[String] = [
 	"short_sword", "hand_axe", "leather_cap", "leather_armor", "leather_gloves", "leather_boots"
 ]
 
-var _pass_count: int = 0
-var _fail_count: int = 0
 # 檢查項目 -> 第一個出錯的說明；沒出錯的項目不會出現在裡面
 var _failures: Dictionary = {}
 
 
-func _ready() -> void:
-	print("===== ItemGenerator 測試開始（種子 %d）=====" % TEST_SEED)
+func _get_test_name() -> String:
+	return "ItemGenerator"
 
+
+func _get_header_note() -> String:
+	return "（種子 %d）" % TEST_SEED
+
+
+func _run_tests() -> void:
 	_test_data_loaded()
 	_test_normal()
 	_test_quality(ItemInstance.QUALITY_MAGIC, "魔法", 1, 2, 1, "名稱是「後綴 + 前綴 + 底材名」，以底材名結尾")
@@ -30,19 +34,19 @@ func _ready() -> void:
 	_test_same_seed_is_reproducible()
 	_test_quality_colors()
 
-	print("===== 測試結束：%d PASS，%d FAIL =====" % [_pass_count, _fail_count])
 
+func _after_tests() -> void:
 	_print_samples(ItemInstance.QUALITY_MAGIC, "魔法")
 	_print_samples(ItemInstance.QUALITY_RARE, "稀有")
 
 
 func _test_data_loaded() -> void:
-	_check(
+	check(
 		"詞綴載入數量正確",
 		ItemDatabase.get_affix_count() == EXPECTED_AFFIX_COUNT,
 		"預期 %d，實際 %d" % [EXPECTED_AFFIX_COUNT, ItemDatabase.get_affix_count()]
 	)
-	_check(
+	check(
 		"稀有名稱的兩組字詞都有載入",
 		not ItemDatabase.get_rare_first_words().is_empty()
 		and not ItemDatabase.get_rare_second_words("sword").is_empty(),
@@ -58,7 +62,7 @@ func _test_normal() -> void:
 		var base_name: String = ItemDatabase.get_base(base_id)["name"]
 		if not item.affixes.is_empty() or item.get_display_name() != base_name or item.get_base_name() != base_name:
 			all_ok = false
-	_check("普通物品沒有詞綴，名稱等於底材名", all_ok, "")
+	check("普通物品沒有詞綴，名稱等於底材名", all_ok, "")
 
 
 # 生成 ITEMS_PER_QUALITY 件物品逐一檢查，每個檢查項目最後各印一行 PASS 或 FAIL
@@ -88,13 +92,13 @@ func _test_quality(
 		"to_dict 還原後內容相同",
 		"經過 JSON 文字再還原後內容相同",
 	]:
-		_check(
+		check(
 			"%s %d 件：%s" % [label, ITEMS_PER_QUALITY, check_name],
 			not _failures.has(check_name),
 			str(_failures.get(check_name, ""))
 		)
 	# 名稱格式依品質不同，標題由呼叫端指定
-	_check(
+	check(
 		"%s %d 件：%s" % [label, ITEMS_PER_QUALITY, name_check_title],
 		not _failures.has(NAME_FORMAT_CHECK),
 		str(_failures.get(NAME_FORMAT_CHECK, ""))
@@ -226,7 +230,7 @@ func _test_magic_combinations() -> void:
 		elif has_suffix:
 			seen_suffix_only = true
 
-	_check(
+	check(
 		"魔法物品出現過只有前綴、只有後綴、兩者都有三種組合",
 		seen_prefix_only and seen_suffix_only and seen_both,
 		"只有前綴 %s、只有後綴 %s、兩者都有 %s" % [seen_prefix_only, seen_suffix_only, seen_both]
@@ -236,7 +240,7 @@ func _test_magic_combinations() -> void:
 func _test_same_seed_is_reproducible() -> void:
 	var first: Array[Dictionary] = _generate_batch()
 	var second: Array[Dictionary] = _generate_batch()
-	_check("相同種子生成的物品完全相同", first == second, "")
+	check("相同種子生成的物品完全相同", first == second, "")
 
 
 func _generate_batch() -> Array[Dictionary]:
@@ -253,7 +257,7 @@ func _test_quality_colors() -> void:
 	var normal: Color = ItemGenerator.generate("short_sword", ItemInstance.QUALITY_NORMAL, rng).get_quality_color()
 	var magic: Color = ItemGenerator.generate("short_sword", ItemInstance.QUALITY_MAGIC, rng).get_quality_color()
 	var rare: Color = ItemGenerator.generate("short_sword", ItemInstance.QUALITY_RARE, rng).get_quality_color()
-	_check(
+	check(
 		"品質顏色：普通白、魔法偏藍、稀有偏黃",
 		normal == Color.WHITE and magic.b > magic.r and rare.r > rare.b and rare.g > rare.b,
 		"普通 %s、魔法 %s、稀有 %s" % [normal, magic, rare]
@@ -284,15 +288,3 @@ func _new_rng() -> RandomNumberGenerator:
 func _fail(check_name: String, detail: String) -> void:
 	if not _failures.has(check_name):
 		_failures[check_name] = detail
-
-
-func _check(title: String, condition: bool, detail: String) -> void:
-	if condition:
-		_pass_count += 1
-		print("PASS  %s" % title)
-	elif detail.is_empty():
-		_fail_count += 1
-		print("FAIL  %s" % title)
-	else:
-		_fail_count += 1
-		print("FAIL  %s：%s" % [title, detail])
