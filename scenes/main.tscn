@@ -30,4 +30,4 @@ polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 [node name="Player" parent="." instance=ExtResource("1_player")]
 
 [node name="Monster" parent="." instance=ExtResource("2_monster")]
-position = Vector2(300, 0)
+position = Vector2(420, 0)

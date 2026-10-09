@@ -106,10 +106,12 @@ func _move_toward(target: Vector2, stop_distance: float, delta: float) -> bool:
 		return true
 
 	# 最後一步限制速度，剛好停在停止距離上而不會衝過頭
-	var step_speed: float = minf(move_speed, (distance - stop_distance) / delta)
+	var remaining: float = distance - stop_distance
+	var step_speed: float = minf(move_speed, remaining / delta)
 	velocity = to_target / distance * step_speed
 	move_and_slide()
-	return false
+	# 走完最後一步就算抵達，不等下一幀再比距離：浮點誤差可能讓距離永遠略大於 stop_distance
+	return remaining <= move_speed * delta
 
 
 func _find_enemy_at(point: Vector2) -> Monster:
