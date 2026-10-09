@@ -44,6 +44,7 @@ res://
 ├── scenes/              場景檔（.tscn），主場景為 scenes/main.tscn
 ├── scripts/
 │   ├── autoload/        Autoload 單例（ItemDatabase、StatSystem）
+│   ├── components/      可重複使用的元件（血量元件、血條等）
 │   ├── player/          玩家相關腳本
 │   ├── monsters/        怪物相關腳本
 │   └── items/           物品相關腳本

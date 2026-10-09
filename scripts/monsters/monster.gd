@@ -7,10 +7,15 @@ var _base_color: Color = Color.WHITE
 var _flash_tween: Tween = null
 
 @onready var _polygon: Polygon2D = $Polygon2D
+@onready var _health: HealthComponent = $HealthComponent
+@onready var _health_bar: HealthBar = $HealthBar
 
 
 func _ready() -> void:
 	_base_color = _polygon.color
+	_health.health_changed.connect(_health_bar.update_health)
+	_health.died.connect(_on_died)
+	_health_bar.update_health(_health.current_health, _health.max_health)
 
 
 func take_damage(amount: int) -> void:
@@ -22,3 +27,9 @@ func take_damage(amount: int) -> void:
 	_polygon.color = Color.WHITE
 	_flash_tween = create_tween()
 	_flash_tween.tween_property(_polygon, "color", _base_color, FLASH_DURATION)
+
+	_health.take_damage(amount)
+
+
+func _on_died() -> void:
+	queue_free()

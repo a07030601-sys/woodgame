@@ -11,6 +11,9 @@ extends CharacterBody2D
 const ARRIVE_DISTANCE: float = 4.0
 # enemies 碰撞層（第 2 層）的位元值
 const ENEMIES_LAYER_MASK: int = 1 << 1
+const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
+# 除錯用，階段 2 怪物會攻擊後移除
+const DEBUG_DAMAGE: int = 10
 
 var _target_position: Vector2 = Vector2.ZERO
 var _has_target: bool = false
@@ -18,8 +21,23 @@ var _is_following_cursor: bool = false
 var _attack_target: Monster = null
 var _attack_cooldown: float = 0.0
 
+@onready var _polygon: Polygon2D = $Polygon2D
+@onready var _health: HealthComponent = $HealthComponent
+@onready var _health_bar: HealthBar = $HealthBar
+
+
+func _ready() -> void:
+	_health.health_changed.connect(_health_bar.update_health)
+	_health.died.connect(_on_died)
+	_health_bar.update_health(_health.current_health, _health.max_health)
+
 
 func _unhandled_input(event: InputEvent) -> void:
+	# 除錯用，階段 2 怪物會攻擊後移除
+	if event.is_action_pressed("debug_damage_player"):
+		take_damage(DEBUG_DAMAGE)
+		return
+
 	if event.is_action_pressed("move_click"):
 		var click_position: Vector2 = get_global_mouse_position()
 		_attack_target = _find_enemy_at(click_position)
@@ -34,7 +52,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
 
-	if is_instance_valid(_attack_target):
+	if _is_attack_target_alive():
 		_process_attack(delta)
 		return
 	_attack_target = null
@@ -52,6 +70,10 @@ func _physics_process(delta: float) -> void:
 		_has_target = false
 
 
+func take_damage(amount: int) -> void:
+	_health.take_damage(amount)
+
+
 func _process_attack(delta: float) -> void:
 	if not _move_toward(_attack_target.global_position, attack_range, delta):
 		return
@@ -59,6 +81,11 @@ func _process_attack(delta: float) -> void:
 		return
 	_attack_target.take_damage(randi_range(min_damage, max_damage))
 	_attack_cooldown = attack_interval
+
+
+# 怪物死亡後會被移除，目標可能已被釋放或正等待釋放
+func _is_attack_target_alive() -> bool:
+	return is_instance_valid(_attack_target) and not _attack_target.is_queued_for_deletion()
 
 
 # 朝 target 直線移動，進入 stop_distance 內就停下並回傳 true
@@ -83,7 +110,7 @@ func _find_enemy_at(point: Vector2) -> Monster:
 	var results: Array[Dictionary] = get_world_2d().direct_space_state.intersect_point(query)
 	for result: Dictionary in results:
 		var monster: Monster = result["collider"] as Monster
-		if monster != null and monster.is_in_group("enemies"):
+		if monster != null and monster.is_in_group("enemies") and not monster.is_queued_for_deletion():
 			return monster
 	return null
 
@@ -91,3 +118,15 @@ func _find_enemy_at(point: Vector2) -> Monster:
 func _set_target(target: Vector2) -> void:
 	_target_position = target
 	_has_target = true
+
+
+func _on_died() -> void:
+	print("玩家死亡")
+	_polygon.color = DEAD_COLOR
+	_attack_target = null
+	_has_target = false
+	_is_following_cursor = false
+	velocity = Vector2.ZERO
+	# 死亡後不再處理移動、攻擊與輸入
+	set_physics_process(false)
+	set_process_unhandled_input(false)

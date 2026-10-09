@@ -1,6 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/monsters/monster.gd" id="1_monster"]
+[ext_resource type="Script" path="res://scripts/components/health_component.gd" id="2_health"]
+[ext_resource type="PackedScene" path="res://scenes/health_bar.tscn" id="3_health_bar"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_monster"]
 size = Vector2(32, 32)
@@ -16,3 +18,10 @@ polygon = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_monster")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_health")
+max_health = 30
+
+[node name="HealthBar" parent="." instance=ExtResource("3_health_bar")]
+position = Vector2(0, -26)
