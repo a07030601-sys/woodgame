@@ -16,6 +16,10 @@ func _ready() -> void:
 	current_health = max_health
 
 
+func is_dead() -> bool:
+	return _is_dead
+
+
 func take_damage(amount: int) -> void:
 	if _is_dead or amount <= 0:
 		return

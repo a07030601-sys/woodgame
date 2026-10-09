@@ -1,3 +1,4 @@
+class_name Player
 extends CharacterBody2D
 
 @export var move_speed: float = 200.0
@@ -76,6 +77,10 @@ func _physics_process(delta: float) -> void:
 
 func take_damage(amount: int) -> void:
 	_health.take_damage(amount)
+
+
+func is_dead() -> bool:
+	return _health.is_dead()
 
 
 func _process_attack(delta: float) -> void:
