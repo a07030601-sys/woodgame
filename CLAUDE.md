@@ -49,6 +49,15 @@
   - `place_or_swap()` 回傳 `{"success": bool, "swapped_item": ItemInstance}`：壓到一件時互換，壓到兩件以上或超出範圍時失敗。
   - 內容改變時發出 `changed`；`to_dict()` / `Inventory.from_dict()` 包含每件物品與位置。
 
+## 裝備
+
+- `Equipment`（`scripts/items/equipment.gd`，`RefCounted`）是裝備欄資料，欄位為 `Equipment.SLOTS`：`weapon`、`helm`、`armor`、`gloves`、`boots`。
+  - 物品底材的 `slot` 與欄位相符才能穿（`can_equip()`）。
+  - `equip()` 回傳 `{"success": bool, "swapped_item": ItemInstance}`，與 `Inventory.place_or_swap()` 相同；`unequip()` 回傳脫下的物品。
+  - 變動時發出 `equipment_changed(slot)`；`to_dict()` / `Equipment.from_dict()` 用於存檔與還原。
+- 玩家擁有一個 `Equipment`（`Player.get_equipment()`）。裝備變動時，該欄位有物品就對屬性元件 `add_source("equip_" + 欄位名, 物品的 get_modifiers())`，空了就 `remove_source`。
+- 玩家空手的基礎傷害是 1～2，武器的傷害以 flat 修正值加在上面。`Player.starting_equipment`（底材 id 清單）決定開場自動穿上的普通裝備，預設是一把短劍。
+
 ## 背包介面
 
 - 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
@@ -56,7 +65,8 @@
   - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
   - `HeldItem`：「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包；之後的裝備欄和丟到地上都要共用這一個，用 `hold()` / `take()` 存取。
   - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。
-  - 面板上方的 `EquipmentArea` 是預留給裝備欄的空間。
+  - `EquipmentPanel`：面板上方的 5 個裝備欄，排列參考暗黑 2（頭盔在上方中間，身體護甲在中間，武器在左側，手套在左下，靴子在右下）。欄位位置定義在 `EquipmentPanel.SLOT_RECTS`。
+  - 格子和裝備欄的預覽狀態都要「自己記住是為哪件物品算的」，並在資料一變動時立刻重算，不能等到 `_draw` 才去讀手上的物品。
 - 手上的物品以中心對準游標；放下時用 `InventoryGrid.get_drop_cell()` 換算左上角的格子。
 - 關閉背包時手上的物品會自動放回空位；放不下時不關閉並顯示提示。
 - 會擋住遊戲世界滑鼠操作的介面要加入群組 `world_input_blockers`，並提供 `is_blocking_world_input() -> bool`。玩家在點擊和按住左鍵跟隨游標時都會檢查，回傳 true 就不移動也不攻擊。

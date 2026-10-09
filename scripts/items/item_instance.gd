@@ -66,6 +66,12 @@ func get_size() -> Vector2i:
 	return Vector2i(int(size[0]), int(size[1]))
 
 
+# 底材的裝備欄位（weapon、helm 等），查不到底材時回傳空字串
+func get_slot() -> String:
+	var base: Dictionary = ItemDatabase.get_base(base_id)
+	return str(base.get("slot", ""))
+
+
 func get_base_name() -> String:
 	var base: Dictionary = ItemDatabase.get_base(base_id)
 	return str(base.get("name", base_id))

@@ -1,7 +1,7 @@
 class_name InventoryScreen
 extends CanvasLayer
 
-# 背包畫面：右側面板（上方預留裝備欄、下方是背包格子）、手上拿著的物品、物品說明框。
+# 背包畫面：右側面板（上方是裝備欄、下方是背包格子）、手上拿著的物品、物品說明框。
 # 開啟時遊戲不暫停。
 
 # 加入這個群組的節點可以用 is_blocking_world_input() 阻止玩家用滑鼠移動或攻擊
@@ -11,6 +11,7 @@ const FULL_MESSAGE: String = "背包已滿，手上的物品放不回去"
 var _inventory: Inventory = null
 
 @onready var _panel: PanelContainer = $Panel
+@onready var _equipment_panel: EquipmentPanel = $Panel/Margin/VBox/EquipmentPanel
 @onready var _grid: InventoryGrid = $Panel/Margin/VBox/Grid
 @onready var _message_label: Label = $Panel/Margin/VBox/MessageLabel
 @onready var _message_timer: Timer = $MessageTimer
@@ -24,11 +25,12 @@ func _ready() -> void:
 	_message_label.text = ""
 	_message_timer.timeout.connect(_on_message_timer_timeout)
 	_grid.hovered_item_changed.connect(_on_hovered_item_changed)
+	_equipment_panel.hovered_item_changed.connect(_on_hovered_item_changed)
 	_held.changed.connect(_on_held_changed)
 
 	var player: Player = get_tree().get_first_node_in_group("player") as Player
 	if player != null:
-		setup(player.get_inventory())
+		setup(player.get_inventory(), player.get_equipment())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -37,9 +39,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func setup(inventory: Inventory) -> void:
+func setup(inventory: Inventory, equipment: Equipment) -> void:
 	_inventory = inventory
 	_grid.setup(inventory, _held)
+	_equipment_panel.setup(equipment, _held)
 
 
 func is_open() -> bool:
@@ -78,6 +81,10 @@ func get_grid() -> InventoryGrid:
 	return _grid
 
 
+func get_equipment_panel() -> EquipmentPanel:
+	return _equipment_panel
+
+
 func get_message() -> String:
 	return _message_label.text
 
@@ -100,7 +107,12 @@ func _on_message_timer_timeout() -> void:
 	_message_label.text = ""
 
 
-func _on_hovered_item_changed(item: ItemInstance) -> void:
+# 背包格子或裝備欄的滑鼠底下物品改變時都會呼叫，兩邊同一時間最多只有一邊有物品
+func _on_hovered_item_changed(_item: ItemInstance) -> void:
+	var item: ItemInstance = _grid.get_hovered_item()
+	if item == null:
+		item = _equipment_panel.get_hovered_item()
+
 	if item != null and not _held.is_holding():
 		_tooltip.show_item(item)
 	else:

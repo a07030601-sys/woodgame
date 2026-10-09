@@ -24,8 +24,7 @@ shape = SubResource("CircleShape2D_player")
 
 [node name="StatsComponent" type="Node" parent="." unique_id=1876714304]
 script = ExtResource("4_stats")
-damage_min = 3.0
-damage_max = 6.0
+damage_max = 2.0
 attack_speed = 1.25
 move_speed = 200.0
 

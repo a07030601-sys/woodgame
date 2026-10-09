@@ -8,9 +8,11 @@ const TEST_SEED: int = 20261010
 const CELL: float = InventoryGrid.CELL_SIZE
 
 var _inventory: Inventory = null
+var _equipment: Equipment = null
 var _screen: InventoryScreen = null
 var _grid: InventoryGrid = null
 var _held: HeldItem = null
+var _equipment_panel: EquipmentPanel = null
 
 
 func _get_test_name() -> String:
@@ -22,6 +24,7 @@ func _run_tests() -> void:
 	_test_swap()
 	_test_close()
 	_test_tooltip_lines()
+	_test_equipment_panel()
 	await _test_preview_matches_hand()
 
 
@@ -31,11 +34,13 @@ func _reset() -> void:
 		remove_child(_screen)
 		_screen.free()
 	_inventory = Inventory.new()
+	_equipment = Equipment.new()
 	_screen = SCREEN_SCENE.instantiate() as InventoryScreen
 	add_child(_screen)
-	_screen.setup(_inventory)
+	_screen.setup(_inventory, _equipment)
 	_grid = _screen.get_grid()
 	_held = _screen.get_held_item()
+	_equipment_panel = _screen.get_equipment_panel()
 
 
 func _test_pick_up_and_place() -> void:
@@ -184,6 +189,55 @@ func _test_tooltip_lines() -> void:
 		and lines[2]["text"] == "傷害：2–5",
 		_join_lines(lines)
 	)
+
+
+func _test_equipment_panel() -> void:
+	_reset()
+	_screen.open()
+	var all_slots_have_rect: bool = true
+	for slot: String in Equipment.SLOTS:
+		if _equipment_panel.get_slot_at(_equipment_panel.get_slot_center(slot)) != slot:
+			all_slots_have_rect = false
+	check("五個裝備欄位都點得到", all_slots_have_rect)
+
+	var sword: ItemInstance = ItemDatabase.create_item("short_sword")
+	var axe: ItemInstance = ItemDatabase.create_item("hand_axe")
+	var cap: ItemInstance = ItemDatabase.create_item("leather_cap")
+
+	_held.hold(cap)
+	_equipment_panel.click_at(_equipment_panel.get_slot_center("weapon"))
+	check(
+		"欄位不符時不穿上，物品留在手上",
+		_held.item == cap and _equipment.get_item("weapon") == null
+	)
+
+	_equipment_panel.click_at(_equipment_panel.get_slot_center("helm"))
+	check("點相符的空欄位會穿上，手上變空", not _held.is_holding() and _equipment.get_item("helm") == cap)
+
+	_held.hold(sword)
+	_equipment_panel.click_at(_equipment_panel.get_slot_center("weapon"))
+	_held.hold(axe)
+	_equipment_panel.click_at(_equipment_panel.get_slot_center("weapon"))
+	check(
+		"欄位已有裝備時互換，換下的物品變成手上的物品",
+		_held.item == sword and _equipment.get_item("weapon") == axe
+	)
+
+	_equipment_panel.click_at(Vector2(2.0, 2.0))
+	check("點在欄位以外的地方不會有反應", _held.item == sword and _equipment.get_item("weapon") == axe)
+
+	check("手上有物品時關閉，物品收進背包而不是穿上", _screen.close() and _inventory.has_item(sword))
+	_screen.open()
+
+	_equipment_panel.click_at(_equipment_panel.get_slot_center("weapon"))
+	check(
+		"手上沒有物品時點已穿上的裝備會脫下並拿到手上",
+		_held.item == axe and _equipment.get_item("weapon") == null
+	)
+	check("裝備欄的預覽不會殘留舊物品", _equipment_panel.get_preview_item() == null or _equipment_panel.get_preview_item() == axe)
+
+	_equipment_panel.click_at(_equipment_panel.get_slot_center("boots"))
+	check("手上有物品時點不符的空欄位沒有反應", _held.item == axe and _equipment.get_item("boots") == null)
 
 
 # 防止再發生：放下物品後，重畫若排在下一次 _process 之前，
