@@ -1,0 +1,135 @@
+[
+	{
+		"id": "prefix_strength",
+		"name": "蠻勇",
+		"affix_type": "prefix",
+		"group": "strength",
+		"weight": 100,
+		"allowed_types": ["sword", "axe", "helm", "armor", "gloves", "boots"],
+		"modifiers": [
+			{"stat": "strength", "type": "flat", "min": 2, "max": 5}
+		]
+	},
+	{
+		"id": "prefix_damage_min",
+		"name": "鋒銳",
+		"affix_type": "prefix",
+		"group": "damage_min",
+		"weight": 100,
+		"allowed_types": ["sword", "axe"],
+		"modifiers": [
+			{"stat": "damage_min", "type": "flat", "min": 1, "max": 3}
+		]
+	},
+	{
+		"id": "prefix_damage_max",
+		"name": "裂骨",
+		"affix_type": "prefix",
+		"group": "damage_max",
+		"weight": 100,
+		"allowed_types": ["sword", "axe"],
+		"modifiers": [
+			{"stat": "damage_max", "type": "flat", "min": 2, "max": 5}
+		]
+	},
+	{
+		"id": "prefix_defense",
+		"name": "堅韌",
+		"affix_type": "prefix",
+		"group": "defense",
+		"weight": 100,
+		"allowed_types": ["helm", "armor", "gloves", "boots"],
+		"modifiers": [
+			{"stat": "defense", "type": "flat", "min": 2, "max": 6}
+		]
+	},
+	{
+		"id": "prefix_defense_percent",
+		"name": "厚實",
+		"affix_type": "prefix",
+		"group": "defense_percent",
+		"weight": 60,
+		"allowed_types": ["helm", "armor", "gloves", "boots"],
+		"modifiers": [
+			{"stat": "defense", "type": "percent", "min": 10, "max": 30}
+		]
+	},
+	{
+		"id": "prefix_life",
+		"name": "暖血",
+		"affix_type": "prefix",
+		"group": "life",
+		"weight": 100,
+		"allowed_types": ["helm", "armor", "gloves", "boots"],
+		"modifiers": [
+			{"stat": "life", "type": "flat", "min": 5, "max": 15}
+		]
+	},
+	{
+		"id": "suffix_vitality",
+		"name": "磐根之",
+		"affix_type": "suffix",
+		"group": "vitality",
+		"weight": 100,
+		"allowed_types": ["sword", "axe", "helm", "armor", "gloves", "boots"],
+		"modifiers": [
+			{"stat": "vitality", "type": "flat", "min": 2, "max": 5}
+		]
+	},
+	{
+		"id": "suffix_strength",
+		"name": "搏熊之",
+		"affix_type": "suffix",
+		"group": "strength",
+		"weight": 60,
+		"allowed_types": ["sword", "axe", "helm", "armor", "gloves", "boots"],
+		"modifiers": [
+			{"stat": "strength", "type": "flat", "min": 1, "max": 3}
+		]
+	},
+	{
+		"id": "suffix_attack_speed",
+		"name": "掠風之",
+		"affix_type": "suffix",
+		"group": "attack_speed",
+		"weight": 80,
+		"allowed_types": ["sword", "axe", "gloves"],
+		"modifiers": [
+			{"stat": "attack_speed", "type": "percent", "min": 5, "max": 15}
+		]
+	},
+	{
+		"id": "suffix_move_speed",
+		"name": "逐鹿之",
+		"affix_type": "suffix",
+		"group": "move_speed",
+		"weight": 100,
+		"allowed_types": ["boots"],
+		"modifiers": [
+			{"stat": "move_speed", "type": "percent", "min": 5, "max": 15}
+		]
+	},
+	{
+		"id": "suffix_life_percent",
+		"name": "長青之",
+		"affix_type": "suffix",
+		"group": "life_percent",
+		"weight": 60,
+		"allowed_types": ["helm", "armor"],
+		"modifiers": [
+			{"stat": "life", "type": "percent", "min": 3, "max": 8}
+		]
+	},
+	{
+		"id": "suffix_damage_percent",
+		"name": "噬刃之",
+		"affix_type": "suffix",
+		"group": "damage_percent",
+		"weight": 60,
+		"allowed_types": ["sword", "axe"],
+		"modifiers": [
+			{"stat": "damage_min", "type": "percent", "min": 10, "max": 20},
+			{"stat": "damage_max", "type": "percent", "min": 10, "max": 20}
+		]
+	}
+]

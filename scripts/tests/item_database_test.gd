@@ -99,7 +99,9 @@ func _test_serialization() -> void:
 	item.quality = "magic"
 	item.sockets = 2
 	item.socketed_runes.append("test_rune")
-	item.affixes.append({"id": "test_affix", "value": 5.0})
+	item.affixes.append(
+		{"id": "test_affix", "modifiers": [{"stat": "life", "value": 5.0, "type": "flat"}]}
+	)
 
 	var saved: Dictionary = item.to_dict()
 	var restored: ItemInstance = ItemInstance.from_dict(saved)
