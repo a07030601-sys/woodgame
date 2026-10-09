@@ -8,6 +8,11 @@ extends Node
 const MODIFIER_FLAT: String = "flat"
 const MODIFIER_PERCENT: String = "percent"
 
+# 每點 strength 讓 damage_min 與 damage_max 各增加的百分比，併入 percent 總和
+const STRENGTH_DAMAGE_PERCENT_PER_POINT: float = 1.0
+# 每點 vitality 增加的 life，併入 flat 總和
+const VITALITY_LIFE_PER_POINT: float = 3.0
+
 const STAT_NAMES: Array[String] = [
 	"strength",
 	"vitality",
@@ -42,13 +47,26 @@ func calculate(base_stats: Dictionary, modifiers: Array) -> Dictionary:
 		if typeof(key) != TYPE_STRING or not STAT_NAMES.has(key):
 			push_warning("StatSystem：忽略不支援的基礎屬性 %s" % str(key))
 
+	# 主屬性的衍生效果：先算出 strength 與 vitality 的最終值，再併入其他屬性的總和
+	var strength: float = _compute_final(base_stats, "strength", flat_totals, percent_totals)
+	var vitality: float = _compute_final(base_stats, "vitality", flat_totals, percent_totals)
+	percent_totals["damage_min"] += strength * STRENGTH_DAMAGE_PERCENT_PER_POINT
+	percent_totals["damage_max"] += strength * STRENGTH_DAMAGE_PERCENT_PER_POINT
+	flat_totals["life"] += vitality * VITALITY_LIFE_PER_POINT
+
 	var final_stats: Dictionary = {}
 	for stat_name: String in STAT_NAMES:
-		var base_value: float = _get_base_value(base_stats, stat_name)
-		var flat_total: float = flat_totals[stat_name]
-		var percent_total: float = percent_totals[stat_name]
-		final_stats[stat_name] = (base_value + flat_total) * (1.0 + percent_total / 100.0)
+		final_stats[stat_name] = _compute_final(base_stats, stat_name, flat_totals, percent_totals)
 	return final_stats
+
+
+func _compute_final(
+	base_stats: Dictionary, stat_name: String, flat_totals: Dictionary, percent_totals: Dictionary
+) -> float:
+	var base_value: float = _get_base_value(base_stats, stat_name)
+	var flat_total: float = flat_totals[stat_name]
+	var percent_total: float = percent_totals[stat_name]
+	return (base_value + flat_total) * (1.0 + percent_total / 100.0)
 
 
 func _get_base_value(base_stats: Dictionary, stat_name: String) -> float:

@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/monster.tscn" id="2_monster"]
 [ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
 [ext_resource type="Script" path="res://scripts/monsters/monster_spawner.gd" id="4_spawner"]
+[ext_resource type="PackedScene" path="res://scenes/ui/stats_panel.tscn" id="5_stats_panel"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3_main")
@@ -61,3 +62,5 @@ theme_override_font_sizes/font_size = 64
 text = "你已死亡"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="StatsPanel" parent="." instance=ExtResource("5_stats_panel")]

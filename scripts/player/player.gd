@@ -12,6 +12,8 @@ const ARRIVE_DISTANCE: float = 4.0
 const ENEMIES_LAYER_MASK: int = 1 << 1
 # attack_speed 的下限，避免算攻擊間隔時除以 0
 const MIN_ATTACK_SPEED: float = 0.01
+# 除錯用，階段 4 有裝備後移除
+const DEBUG_STRENGTH_SOURCE: String = "debug_strength"
 const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
@@ -42,6 +44,16 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# 除錯用，階段 4 有裝備後移除
+	if event.is_action_pressed("debug_toggle_strength"):
+		if _stats.has_source(DEBUG_STRENGTH_SOURCE):
+			_stats.remove_source(DEBUG_STRENGTH_SOURCE)
+		else:
+			_stats.add_source(
+				DEBUG_STRENGTH_SOURCE, [{"stat": "strength", "value": 10, "type": "flat"}]
+			)
+		return
+
 	if event.is_action_pressed("move_click"):
 		var click_position: Vector2 = get_global_mouse_position()
 		_attack_target = _find_enemy_at(click_position)
@@ -80,6 +92,10 @@ func take_damage(amount: int) -> void:
 
 func is_dead() -> bool:
 	return _health.is_dead()
+
+
+func get_stats() -> StatsComponent:
+	return _stats
 
 
 func revive(spawn_position: Vector2) -> void:

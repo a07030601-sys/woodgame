@@ -89,6 +89,40 @@ func _ready() -> void:
 		{"strength": 10.0}
 	)
 
+	_check(
+		"10 點力量讓傷害變為 1.1 倍",
+		{"strength": 10, "damage_min": 10, "damage_max": 20},
+		[],
+		{"damage_min": 11.0, "damage_max": 22.0}
+	)
+	_check(
+		"10 點體力讓生命 +30",
+		{"vitality": 10, "life": 100},
+		[],
+		{"life": 130.0}
+	)
+	_check(
+		"力量的 percent 與裝備的 percent 相加而不是相乘",
+		{"strength": 10, "damage_min": 10},
+		[{"stat": "damage_min", "value": 20, "type": "percent"}],
+		{"damage_min": 13.0}
+	)
+	_check(
+		"衍生效果用的是力量的最終值",
+		{"strength": 5, "damage_min": 10},
+		[
+			{"stat": "strength", "value": 5, "type": "flat"},
+			{"stat": "strength", "value": 100, "type": "percent"},
+		],
+		{"strength": 20.0, "damage_min": 12.0}
+	)
+	_check(
+		"體力給的生命併入 flat，再乘上生命的 percent",
+		{"vitality": 10, "life": 100},
+		[{"stat": "life", "value": 10, "type": "percent"}],
+		{"life": 143.0}
+	)
+
 	print("===== 測試結束：%d PASS，%d FAIL =====" % [_pass_count, _fail_count])
 
 
