@@ -16,8 +16,6 @@ const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
 const DAMAGE_NUMBER_COLOR: Color = Color(1.0, 0.25, 0.25, 1.0)
-# 除錯用，階段 2 怪物會攻擊後移除
-const DEBUG_DAMAGE: int = 10
 
 var _target_position: Vector2 = Vector2.ZERO
 var _has_target: bool = false
@@ -38,11 +36,6 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# 除錯用，階段 2 怪物會攻擊後移除
-	if event.is_action_pressed("debug_damage_player"):
-		take_damage(DEBUG_DAMAGE)
-		return
-
 	if event.is_action_pressed("move_click"):
 		var click_position: Vector2 = get_global_mouse_position()
 		_attack_target = _find_enemy_at(click_position)

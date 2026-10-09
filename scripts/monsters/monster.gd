@@ -1,24 +1,35 @@
 class_name Monster
 extends CharacterBody2D
 
-enum State { IDLE, PATROL, CHASE }
+enum State { IDLE, PATROL, CHASE, ATTACK }
 
 @export var chase_speed: float = 120.0
 @export var detection_range: float = 250.0
 # 追擊中玩家超出此距離就放棄，需大於 detection_range
 @export var give_up_range: float = 400.0
-# 與玩家中心點的距離，需大於雙方碰撞體相加的大小，且小於玩家的攻擊範圍
+# 與玩家中心點的距離，需大於雙方碰撞體相加的大小，且不大於 attack_range
 @export var stop_distance: float = 40.0
+# 與玩家中心點的距離，需不小於 stop_distance，停下來時才打得到玩家
+@export var attack_range: float = 48.0
+# 兩次命中之間的秒數，包含前搖時間
+@export var attack_interval: float = 1.2
+@export var attack_windup: float = 0.4
+@export var min_damage: int = 4
+@export var max_damage: int = 8
 # 巡邏點以出生位置為中心，在此半徑內隨機選取
 @export var patrol_radius: float = 120.0
 @export var patrol_speed: float = 60.0
 @export var idle_time_min: float = 1.0
 @export var idle_time_max: float = 3.0
+# 開啟時才 print 狀態切換與巡邏點資訊
+@export var debug_ai: bool = false
 
 # 與巡邏點的距離小於此值就視為抵達，避免在目標點來回抖動
 const ARRIVE_DISTANCE: float = 4.0
 # 巡邏逾時＝預估走到巡邏點的秒數再加上這段緩衝，確保 PATROL 一定會結束
 const PATROL_TIMEOUT_MARGIN: float = 1.0
+# 前搖期間外觀逐漸放大到這個倍率，當作出手提示
+const WINDUP_SCALE: float = 1.4
 const FLASH_DURATION: float = 0.15
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
@@ -29,6 +40,10 @@ var _spawn_position: Vector2 = Vector2.ZERO
 var _patrol_target: Vector2 = Vector2.ZERO
 var _idle_time_left: float = 0.0
 var _patrol_time_left: float = 0.0
+var _attack_cooldown: float = 0.0
+var _is_winding_up: bool = false
+var _windup_time_left: float = 0.0
+var _windup_tween: Tween = null
 var _base_color: Color = Color.WHITE
 var _flash_tween: Tween = null
 var _player: Player = null
@@ -39,6 +54,9 @@ var _player: Player = null
 
 
 func _ready() -> void:
+	if stop_distance > attack_range:
+		push_warning("%s 的 stop_distance 大於 attack_range，停下來時會打不到玩家" % name)
+
 	_spawn_position = global_position
 	_base_color = _polygon.color
 	_health.health_changed.connect(_health_bar.update_health)
@@ -49,6 +67,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# 冷卻在所有狀態都會倒數，玩家進出攻擊範圍不會讓怪物打得更快
+	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
+
 	match _state:
 		State.IDLE:
 			_process_idle(delta)
@@ -56,6 +77,8 @@ func _physics_process(delta: float) -> void:
 			_process_patrol(delta)
 		State.CHASE:
 			_process_chase(delta)
+		State.ATTACK:
+			_process_attack(delta)
 
 
 func take_damage(amount: int) -> void:
@@ -71,10 +94,13 @@ func take_damage(amount: int) -> void:
 	_health.take_damage(amount)
 
 
-# 所有狀態切換都經過這裡，進入新狀態時的初始化也放在這
+# 所有狀態切換都經過這裡，離開舊狀態的收尾與進入新狀態的初始化也放在這
 func _change_state(new_state: State) -> void:
+	if _state == State.ATTACK:
+		_end_windup()
+
 	_state = new_state
-	print("%s 狀態：%s" % [name, State.keys()[new_state]])
+	_debug_log("狀態：%s" % State.keys()[new_state])
 
 	match new_state:
 		State.IDLE:
@@ -85,8 +111,12 @@ func _change_state(new_state: State) -> void:
 			_patrol_time_left = (
 				global_position.distance_to(_patrol_target) / patrol_speed + PATROL_TIMEOUT_MARGIN
 			)
+			_debug_log("巡邏點：%s" % _patrol_target)
 		State.CHASE:
 			pass
+		State.ATTACK:
+			# 冷卻結束後才會開始前搖，剛進入時不沿用上一次的前搖
+			_is_winding_up = false
 
 
 func _process_idle(delta: float) -> void:
@@ -113,12 +143,59 @@ func _process_patrol(delta: float) -> void:
 
 
 func _process_chase(delta: float) -> void:
+	var distance: float = _get_player_distance()
 	# 玩家死亡或不存在時距離為 INF，同樣會放棄追擊
-	if _get_player_distance() > give_up_range:
+	if distance > give_up_range:
 		_change_state(State.PATROL)
+		return
+	if distance <= attack_range:
+		_change_state(State.ATTACK)
 		return
 
 	_move_toward(_player.global_position, chase_speed, stop_distance, delta)
+
+
+func _process_attack(delta: float) -> void:
+	var distance: float = _get_player_distance()
+	if is_inf(distance):
+		_change_state(State.PATROL)
+		return
+	if distance > attack_range:
+		_change_state(State.CHASE)
+		return
+
+	# 攻擊時繼續貼近到停止距離，玩家稍微移動才不會馬上脫離攻擊範圍
+	_move_toward(_player.global_position, chase_speed, stop_distance, delta)
+
+	if not _is_winding_up:
+		if _attack_cooldown <= 0.0:
+			_start_windup()
+		return
+
+	_windup_time_left -= delta
+	if _windup_time_left > 0.0:
+		return
+
+	# 玩家離開攻擊範圍時上面已切回 CHASE，走到這裡代表前搖結束時玩家仍在範圍內
+	_end_windup()
+	_attack_cooldown = maxf(attack_interval - attack_windup, 0.0)
+	_player.take_damage(randi_range(min_damage, max_damage))
+
+
+func _start_windup() -> void:
+	_is_winding_up = true
+	_windup_time_left = attack_windup
+	_windup_tween = create_tween()
+	_windup_tween.tween_property(_polygon, "scale", Vector2.ONE * WINDUP_SCALE, attack_windup)
+
+
+# 出手或前搖被打斷時都會呼叫，把外觀恢復原狀
+func _end_windup() -> void:
+	_is_winding_up = false
+	if _windup_tween != null:
+		_windup_tween.kill()
+		_windup_tween = null
+	_polygon.scale = Vector2.ONE
 
 
 # 朝 target 直線移動，進入 stop_range 內就停下並回傳 true
@@ -151,6 +228,11 @@ func _pick_patrol_point() -> Vector2:
 	# 半徑取平方根，讓選到的點在圓內均勻分布
 	var offset: Vector2 = Vector2.from_angle(randf() * TAU) * sqrt(randf()) * patrol_radius
 	return _spawn_position + offset
+
+
+func _debug_log(message: String) -> void:
+	if debug_ai:
+		print("%s %s" % [name, message])
 
 
 # 數字加到主場景而不是自己底下，被擊殺移除時最後一擊的數字才不會跟著消失
