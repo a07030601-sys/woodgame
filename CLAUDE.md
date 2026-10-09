@@ -5,7 +5,7 @@
 - 引擎：Godot 4.7.2
 - 類型：2D 俯視角、暗黑破壞神 2 風格的單機刷寶 ARPG
 - 單人開發、單機遊戲（無連線功能）
-- **目前階段：階段 2：怪物 AI 與重生**
+- **目前階段：階段 3：屬性系統**
 
 ## 程式語言
 
@@ -19,13 +19,19 @@
 
 ## 屬性計算
 
-- 所有屬性加成一律轉成修正值：`{"stat", "value", "type"}`。
+- 所有屬性加成一律轉成修正值：`{"stat": String, "value": float, "type": String}`。
 - `type` 只有 `flat` 或 `percent` 兩種。
-- 由 StatSystem 統一計算，公式為：
+- `percent` 的 `value` 以百分比表示：`20` 代表 +20%，不是 `0.2`。
+- 由 StatSystem 統一計算（`StatSystem.calculate(base_stats, modifiers)`），每個屬性的公式為：
 
   ```
-  最終值 = （基礎值 + 所有 flat）×（1 + 所有 percent 總和）
+  最終值 = （基礎值 + 所有 flat 總和）×（1 + 所有 percent 總和 ÷ 100）
   ```
+
+- StatSystem 只負責計算，不保存任何角色的資料；內部用 float 計算，不四捨五入，要取整由使用端決定。
+- 目前支援的屬性名稱（定義在 `StatSystem.STAT_NAMES`，新增屬性時兩邊都要更新）：
+  `strength`、`vitality`、`life`、`damage_min`、`damage_max`、`attack_speed`、`move_speed`
+- 屬性名稱不在清單內、`type` 不合法或缺少欄位的修正值，會用 `push_warning` 警告並忽略。
 
 ## 全域資料
 
@@ -42,14 +48,16 @@
 ```
 res://
 ├── scenes/              場景檔（.tscn），主場景為 scenes/main.tscn
-│   └── ui/              介面場景（傷害數字等）
+│   ├── ui/              介面場景（傷害數字等）
+│   └── tests/           測試場景，開啟後按 F6 單獨執行
 ├── scripts/
 │   ├── autoload/        Autoload 單例（ItemDatabase、StatSystem）
 │   ├── components/      可重複使用的元件（血量元件、血條等）
 │   ├── player/          玩家相關腳本
 │   ├── monsters/        怪物相關腳本
 │   ├── items/           物品相關腳本
-│   └── ui/              介面相關腳本
+│   ├── ui/              介面相關腳本
+│   └── tests/           測試腳本
 ├── data/                JSON 資料（物品、詞綴、符文、符文之語、套裝）
 ├── assets/              美術、音效等素材
 ├── project.godot
