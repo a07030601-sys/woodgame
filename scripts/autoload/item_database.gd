@@ -208,7 +208,8 @@ func get_set_ids() -> Array[String]:
 	return ids
 
 
-# 套裝物品：{"id", "name", "base": 底材 id, "set_id", "modifiers": 固定的修正值}。
+# 套裝物品：{"id", "name", "base": 底材 id, "set_id", "modifiers": 固定的修正值}，
+# 另外可以有 "set_bonuses": {件數（文字）: 修正值清單}，是這一件自己的件數詞綴。
 # 找不到時警告並回傳空的 Dictionary
 func get_set_item(id: String) -> Dictionary:
 	if not _set_items.has(id):
@@ -751,25 +752,33 @@ func _is_valid_set(entry: Variant) -> bool:
 			push_warning("ItemDatabase：略過 items 含有非文字項目的套裝 %s" % id)
 			return false
 
-	# bonuses 的鍵是件數（JSON 的鍵只能是文字），值是修正值清單
-	var bonuses: Variant = entry["bonuses"]
+	return _is_valid_piece_bonuses(entry["bonuses"], items.size(), "bonuses", "套裝 %s" % id)
+
+
+# 檢查「件數 -> 修正值清單」：套裝的 bonuses 和套裝物品的 set_bonuses 共用。
+# 鍵是件數（JSON 的鍵只能是文字），要在 1 到 max_pieces 之間；值是非空的修正值清單。
+func _is_valid_piece_bonuses(
+	bonuses: Variant, max_pieces: int, field: String, owner_label: String
+) -> bool:
 	if typeof(bonuses) != TYPE_DICTIONARY:
-		push_warning("ItemDatabase：略過 bonuses 不是「件數 -> 修正值清單」的套裝 %s" % id)
+		push_warning("ItemDatabase：略過 %s 不是「件數 -> 修正值清單」的%s" % [field, owner_label])
 		return false
 	for piece_count: Variant in bonuses:
 		var count_text: String = str(piece_count)
-		if not count_text.is_valid_int() or int(count_text) < 1 or int(count_text) > items.size():
+		if not count_text.is_valid_int() or int(count_text) < 1 or int(count_text) > max_pieces:
 			push_warning(
-				"ItemDatabase：略過套裝 %s，bonuses 的件數 %s 不在 1～%d 之間"
-				% [id, count_text, items.size()]
+				"ItemDatabase：略過%s，%s 的件數 %s 不在 1～%d 之間"
+				% [owner_label, field, count_text, max_pieces]
 			)
 			return false
 		var modifiers: Variant = bonuses[piece_count]
 		if typeof(modifiers) != TYPE_ARRAY or modifiers.is_empty():
-			push_warning("ItemDatabase：略過套裝 %s，%s 件的加成不是非空陣列" % [id, count_text])
+			push_warning(
+				"ItemDatabase：略過%s，%s 裡 %s 件的加成不是非空陣列" % [owner_label, field, count_text]
+			)
 			return false
 		for modifier: Variant in modifiers:
-			if not _is_valid_fixed_modifier(modifier, "套裝 %s" % id):
+			if not _is_valid_fixed_modifier(modifier, owner_label):
 				return false
 
 	return true
@@ -815,6 +824,12 @@ func _is_valid_set_item(entry: Variant) -> bool:
 	for modifier: Variant in modifiers:
 		if not _is_valid_fixed_modifier(modifier, "套裝物品 %s" % id):
 			return false
+
+	# set_bonuses 是選填的：這一件穿在身上、且所屬套裝的件數達到門檻時才生效的修正值
+	if entry.has("set_bonuses") and not _is_valid_piece_bonuses(
+		entry["set_bonuses"], _sets[set_id]["items"].size(), "set_bonuses", "套裝物品 %s" % id
+	):
+		return false
 
 	return true
 

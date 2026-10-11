@@ -25,6 +25,19 @@ const STARCHASE_2: Array[Dictionary] = [
 	{"stat": "damage_max", "value": 10.0, "type": "percent"},
 	{"stat": "move_speed", "value": 5.0, "type": "percent"},
 ]
+# 單件的件數詞綴（set_items.json 的 set_bonuses），那一件自己穿在身上、該套件數達到門檻才生效：
+# 霧林護手 2 件：+5% 攻擊速度
+const GRIPS_2: Array[Dictionary] = [
+	{"stat": "attack_speed", "value": 5.0, "type": "percent"},
+]
+# 霧林獵衣 3 件：+10% 生命
+const JERKIN_3: Array[Dictionary] = [
+	{"stat": "life", "value": 10.0, "type": "percent"},
+]
+# 逐星之履 2 件：+4 防禦
+const TREADS_2: Array[Dictionary] = [
+	{"stat": "defense", "value": 4.0, "type": "flat"},
+]
 
 var _player: Player = null
 var _stats: StatsComponent = null
@@ -57,7 +70,10 @@ func _test_data_matches() -> void:
 		"測試裡的加成內容和 sets.json 一致",
 		SetBonusCalculator.get_bonus_modifiers(MISTWOOD, 2) == MISTWOOD_2
 		and SetBonusCalculator.get_bonus_modifiers(MISTWOOD, 3) == MISTWOOD_2 + MISTWOOD_3
-		and SetBonusCalculator.get_bonus_modifiers(STARCHASE, 2) == STARCHASE_2,
+		and SetBonusCalculator.get_bonus_modifiers(STARCHASE, 2) == STARCHASE_2
+		and SetBonusCalculator.get_item_bonus_modifiers("mistwood_grips", 2) == GRIPS_2
+		and SetBonusCalculator.get_item_bonus_modifiers("mistwood_jerkin", 3) == JERKIN_3
+		and SetBonusCalculator.get_item_bonus_modifiers("starchase_treads", 2) == TREADS_2,
 		"霧林 3 件：%s" % str(SetBonusCalculator.get_bonus_modifiers(MISTWOOD, 3))
 	)
 
@@ -142,7 +158,7 @@ func _test_two_pieces() -> void:
 	_equipment.equip(hood, "helm")
 	_equipment.equip(grips, "gloves")
 	check("穿 2 件時屬性元件多了 set_mistwood 這個來源", _stats.has_source(MISTWOOD_SOURCE))
-	_check_stats("穿 2 件觸發 2 件加成", [hood, grips], MISTWOOD_2)
+	_check_stats("穿 2 件觸發 2 件加成", [hood, grips], MISTWOOD_2 + GRIPS_2)
 	# 兜帽 +12 生命，2 件加成 +15 生命
 	check(
 		"穿 2 件時生命是基礎值 + 12 + 15",
@@ -159,7 +175,11 @@ func _test_three_pieces() -> void:
 	_reset_player()
 	var pieces: Array[ItemInstance] = _equip_mistwood()
 	check("穿 3 件時有 set_mistwood 這個來源", _stats.has_source(MISTWOOD_SOURCE))
-	_check_stats("A 套穿 3 件時 2 件和 3 件加成都生效", pieces, MISTWOOD_2 + MISTWOOD_3)
+	_check_stats(
+		"A 套穿 3 件時 2 件和 3 件加成都生效",
+		pieces,
+		MISTWOOD_2 + MISTWOOD_3 + GRIPS_2 + JERKIN_3
+	)
 
 	# 防禦：兜帽 4 + 3、獵衣 10、護手 3，共 20；百分比是獵衣的 20% 加上 3 件加成的 25%
 	var flat_defense: float = _base_stats["defense"] + 4.0 + 3.0 + 10.0 + 3.0
@@ -168,10 +188,10 @@ func _test_three_pieces() -> void:
 		is_equal_approx(_stats.get_stat("defense"), flat_defense * 1.45),
 		"實際 %s，預期 %s" % [_stats.get_stat("defense"), flat_defense * 1.45]
 	)
-	# 生命：兜帽 +12、獵衣的 3 點體力 +9、2 件加成 +15
+	# 生命：兜帽 +12、獵衣的 3 點體力 +9、2 件加成 +15，再乘上獵衣 3 件詞綴的 +10%
 	check(
-		"穿 3 件時 2 件加成的生命還在",
-		is_equal_approx(_stats.get_stat("life"), _base_stats["life"] + 12.0 + 9.0 + 15.0),
+		"穿 3 件時 2 件加成的生命還在，獵衣的 3 件詞綴再 +10%",
+		is_equal_approx(_stats.get_stat("life"), (_base_stats["life"] + 12.0 + 9.0 + 15.0) * 1.1),
 		str(_stats.get_stat("life"))
 	)
 	check(
@@ -248,7 +268,11 @@ func _test_both_sets() -> void:
 		and _stats.has_source(MISTWOOD_SOURCE)
 		and _stats.has_source(STARCHASE_SOURCE)
 	)
-	_check_stats("兩套同時穿滿時各自正確生效", pieces, MISTWOOD_2 + MISTWOOD_3 + STARCHASE_2)
+	_check_stats(
+		"兩套同時穿滿時各自正確生效",
+		pieces,
+		MISTWOOD_2 + MISTWOOD_3 + GRIPS_2 + JERKIN_3 + STARCHASE_2 + TREADS_2
+	)
 
 	# 移動速度：靴子 10% + 霧林 3 件 5% + 逐星 2 件 5%
 	check(
@@ -270,7 +294,11 @@ func _test_both_sets() -> void:
 		"逐星脫成 1 件後只有逐星的來源被移除",
 		_stats.has_source(MISTWOOD_SOURCE) and not _stats.has_source(STARCHASE_SOURCE)
 	)
-	_check_stats("逐星脫成 1 件後，霧林的 3 件加成不受影響", pieces, MISTWOOD_2 + MISTWOOD_3)
+	_check_stats(
+		"逐星脫成 1 件後，霧林的 3 件加成不受影響",
+		pieces,
+		MISTWOOD_2 + MISTWOOD_3 + GRIPS_2 + JERKIN_3
+	)
 
 
 func _test_replace_with_non_set() -> void:
@@ -279,7 +307,7 @@ func _test_replace_with_non_set() -> void:
 	var treads: ItemInstance = _set_item("starchase_treads")
 	_equipment.equip(blade, "weapon")
 	_equipment.equip(treads, "boots")
-	_check_stats("測試準備：逐星 2 件加成生效", [blade, treads], STARCHASE_2)
+	_check_stats("測試準備：逐星 2 件加成生效", [blade, treads], STARCHASE_2 + TREADS_2)
 
 	# 直接換上一把普通短劍（互換，不經過脫下）
 	var plain_sword: ItemInstance = ItemDatabase.create_item("short_sword")
@@ -290,7 +318,7 @@ func _test_replace_with_non_set() -> void:
 
 	# 再換回來要重新生效
 	_equipment.equip(blade, "weapon")
-	_check_stats("換回套裝武器後 2 件加成重新生效", [blade, treads], STARCHASE_2)
+	_check_stats("換回套裝武器後 2 件加成重新生效", [blade, treads], STARCHASE_2 + TREADS_2)
 
 	# 霧林 3 件時把一件換成稀有物品
 	_reset_player()
@@ -320,7 +348,7 @@ func _test_starting_equipment() -> void:
 	var treads: ItemInstance = ItemInstance.from_dict(_set_item("starchase_treads").to_dict())
 	_equipment.equip(blade, "weapon")
 	_equipment.equip(treads, "boots")
-	_check_stats("存檔還原出來的套裝物品穿上後，2 件加成一樣生效", [blade, treads], STARCHASE_2)
+	_check_stats("存檔還原出來的套裝物品穿上後，2 件加成一樣生效", [blade, treads], STARCHASE_2 + TREADS_2)
 
 
 # 沒有起始裝備、背包是空的全新玩家，並記下沒穿裝備時的屬性

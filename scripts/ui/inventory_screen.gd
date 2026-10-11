@@ -9,6 +9,8 @@ extends CanvasLayer
 const WORLD_INPUT_BLOCKERS_GROUP: String = "world_input_blockers"
 
 var _held: HeldItem = null
+# 玩家身上的裝備，套裝物品的說明框用它算件數
+var _equipment: Equipment = null
 
 @onready var _panel: PanelContainer = $Panel
 @onready var _equipment_panel: EquipmentPanel = $Panel/Margin/VBox/EquipmentPanel
@@ -41,6 +43,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func setup(inventory: Inventory, equipment: Equipment, held: HeldItem) -> void:
 	_held = held
 	_held.changed.connect(_on_held_changed)
+	_equipment = equipment
+	_equipment.equipment_changed.connect(_on_equipment_changed)
 	_grid.setup(inventory, held)
 	_equipment_panel.setup(equipment, held)
 
@@ -62,7 +66,7 @@ func open() -> void:
 
 # 手上的物品不受影響，會繼續留在游標上
 func close() -> void:
-	_tooltip.hide()
+	_tooltip.hide_item()
 	hide()
 
 
@@ -74,6 +78,10 @@ func get_equipment_panel() -> EquipmentPanel:
 	return _equipment_panel
 
 
+func get_tooltip() -> ItemTooltip:
+	return _tooltip
+
+
 # 背包開著且滑鼠在面板上時，玩家不能用滑鼠移動或攻擊
 func is_blocking_world_input() -> bool:
 	if not visible:
@@ -81,18 +89,28 @@ func is_blocking_world_input() -> bool:
 	return _panel.get_global_rect().has_point(get_viewport().get_mouse_position())
 
 
-# 背包格子或裝備欄的滑鼠底下物品改變時都會呼叫，兩邊同一時間最多只有一邊有物品
-func _on_hovered_item_changed(_item: ItemInstance) -> void:
+# 依目前滑鼠底下的物品重建說明框。背包格子與裝備欄同一時間最多只有一邊有物品；
+# 手上拿著物品時不顯示。內容每次都重新產生，裝備變動後件數才會是新的。
+func _refresh_tooltip() -> void:
 	var item: ItemInstance = _grid.get_hovered_item()
 	if item == null:
 		item = _equipment_panel.get_hovered_item()
 
 	if item != null and not _held.is_holding():
-		_tooltip.show_item(item)
+		_tooltip.show_item(item, _equipment)
 	else:
-		_tooltip.hide()
+		_tooltip.hide_item()
+
+
+# 背包格子或裝備欄的滑鼠底下物品改變時都會呼叫
+func _on_hovered_item_changed(_item: ItemInstance) -> void:
+	_refresh_tooltip()
 
 
 func _on_held_changed() -> void:
-	if _held.is_holding():
-		_tooltip.hide()
+	_refresh_tooltip()
+
+
+# 裝備一變動，正在顯示的說明框就要立刻更新（套裝的件數、已穿上的成員都可能不同）
+func _on_equipment_changed(_slot: String) -> void:
+	_refresh_tooltip()

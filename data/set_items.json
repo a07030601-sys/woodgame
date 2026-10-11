@@ -17,7 +17,12 @@
 		"modifiers": [
 			{"stat": "defense", "value": 20, "type": "percent"},
 			{"stat": "vitality", "value": 3, "type": "flat"}
-		]
+		],
+		"set_bonuses": {
+			"3": [
+				{"stat": "life", "value": 10, "type": "percent"}
+			]
+		}
 	},
 	{
 		"id": "mistwood_grips",
@@ -27,7 +32,12 @@
 		"modifiers": [
 			{"stat": "attack_speed", "value": 8, "type": "percent"},
 			{"stat": "strength", "value": 2, "type": "flat"}
-		]
+		],
+		"set_bonuses": {
+			"2": [
+				{"stat": "attack_speed", "value": 5, "type": "percent"}
+			]
+		}
 	},
 	{
 		"id": "starchase_blade",
@@ -48,6 +58,11 @@
 		"modifiers": [
 			{"stat": "move_speed", "value": 10, "type": "percent"},
 			{"stat": "defense", "value": 2, "type": "flat"}
-		]
+		],
+		"set_bonuses": {
+			"2": [
+				{"stat": "defense", "value": 4, "type": "flat"}
+			]
+		}
 	}
 ]

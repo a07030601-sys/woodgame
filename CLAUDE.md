@@ -33,7 +33,7 @@
 - `data/runes.json`：符文清單（陣列）。每筆的欄位：`id`、`name`、`weapon_mods`、`armor_mods`。後兩者是符文插在武器、防具上各自提供的修正值，格式就是「屬性計算」的修正值（`stat`、`value`、`type`，數值固定不擲骰）。
 - `data/runewords.json`：符文之語清單（陣列）。每筆的欄位：`id`、`name`、`runes`（符文 id，有順序）、`allowed_bases`（可用的底材 `type`）、`modifiers`（修正值，格式與符文相同）。只能用 `runes.json` 裡的符文和 `bases.json` 裡的底材類型。
 - `data/sets.json`：套裝清單（陣列）。每筆的欄位：`id`、`name`、`items`（套裝物品 id 清單）、`bonuses`（「件數（文字）-> 修正值清單」，例如 `"2"`、`"3"`）。件數加成的計算見「裝備」。
-- `data/set_items.json`：套裝物品清單（陣列）。每筆的欄位：`id`、`name`、`base`（`bases.json` 的底材 id）、`set_id`、`modifiers`（固定的修正值）。載入時 `base` 或 `set_id` 不存在會 `push_error` 並略過；`sets.json` 的 `items` 指到不存在的套裝物品也會 `push_error`。
+- `data/set_items.json`：套裝物品清單（陣列）。每筆的欄位：`id`、`name`、`base`（`bases.json` 的底材 id）、`set_id`、`modifiers`（固定的修正值），以及選填的 `set_bonuses`（這一件自己的件數詞綴，格式與套裝的 `bonuses` 相同）。載入時 `base` 或 `set_id` 不存在會 `push_error` 並略過；`sets.json` 的 `items` 指到不存在的套裝物品也會 `push_error`。
 - `data/item_settings.json`：物品生成的設定。`socket_chance` 是普通品質的物品生成時有孔的機率（百分比）。
 - `ItemDatabase`（Autoload）啟動時讀取並檢查以上資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)`、`get_affix(id)`、`get_rune(id)`、`get_runeword(id)`、`get_set(id)`、`get_set_item(id)` 查資料，用 `create_item(base_id)` 建立普通物品（沒有孔），用 `create_rune(rune_id)` 建立符文物品，用 `create_set_item(set_item_id)` 建立套裝物品。
 - `ItemInstance`（`scripts/items/item_instance.gd`，`RefCounted`）代表一件實際的物品，欄位：`base_id`、`rune_id`、`quality`、`sockets`（孔數）、`socketed_runes`（已插入的符文 id）、`runeword_id`（符文之語 id）、`set_item_id`（套裝物品 id）、`affixes`、`defense`（生成時擲出的防禦值）、`rare_name`（稀有物品的名稱）。
@@ -72,6 +72,7 @@
   - `calculate(equipment)` 回傳「套裝 id -> `{"count": 件數, "modifiers": 生效的修正值清單}`」，只包含身上至少有一件的套裝。
   - 只算穿在身上的物品，背包裡的不算；同一個 `set_item_id` 只算一次。
   - 加成是累加的：件數達到 `bonuses` 裡的每一個門檻，該門檻的修正值都生效（穿 3 件時 2 件與 3 件的加成同時生效）。
+  - 單件的件數詞綴（套裝物品的 `set_bonuses`）也在這裡算：那一件自己穿在身上、且該套件數達到門檻時生效，併入同一套的修正值清單。
   - 玩家在裝備變動時重算所有套裝：有生效的加成就 `add_source("set_" + 套裝 id, 修正值清單)`，沒有就 `remove_source`。
 - 玩家空手的基礎傷害是 1～2，武器的傷害以 flat 修正值加在上面。`Player.starting_equipment`（底材 id 清單）決定開場自動穿上的普通裝備，預設是一把短劍。
 - 除錯用的開關（預設都關閉）：`Player.debug_start_items` 開場在背包放幾件隨機的魔法與稀有裝備；`Player.debug_runeword_kit` 開場在背包放入能湊出每一組符文之語的底材（孔數剛好）和需要的符文；`Player.debug_set_kit` 開場在背包放入每一套套裝的全部套裝物品。
@@ -81,7 +82,10 @@
 - 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
 - `scenes/ui/inventory_screen.tscn`（`InventoryScreen`）由幾個獨立的部分組成，腳本都在 `scripts/ui/`：
   - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
-  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」，接著列出已插入的符文名稱，符文的修正值接在詞綴修正值後面一起顯示；符文分成「武器：」與「防具：」兩段，各自列出修正值；符文之語依序顯示名稱、底材名、「'符文A 符文B'」、底材的傷害或防禦、所有修正值；套裝物品依序顯示綠色的名稱、底材名、底材的傷害或防禦、修正值，最後一行是綠色的套裝名稱。
+  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」，接著列出已插入的符文名稱，符文的修正值接在詞綴修正值後面一起顯示；符文分成「武器：」與「防具：」兩段，各自列出修正值；符文之語依序顯示名稱、底材名、「'符文A 符文B'」、底材的傷害或防禦、所有修正值；套裝物品的內容見下一項。
+  - 說明框的內容一律先由 `build_lines(item, equipment)` 產生成資料清單（每一行是 `{"text", "color"}`），畫面只照這份資料畫；`equipment` 是玩家身上的裝備，只有套裝物品會用到。隱藏說明框用 `hide_item()`，目前顯示的資料用 `get_lines()` 取得。
+  - 套裝物品的說明，件數一律用玩家身上的 `Equipment` 計算（物品在背包或裝備欄都一樣），依序是：綠色的名稱、底材名、底材的傷害或防禦；固定修正值；單件的件數詞綴；空一行後的套裝名稱；套裝成員名稱（已穿上綠色、未穿上灰色）；套裝的件數加成。件數詞綴與件數加成生效時綠色，未生效時灰色並在後面加「(N 件)」。這幾種行會多帶 `kind`（`ItemTooltip.LINE_` 開頭的常數）與 `active`。
+  - 裝備變動時（`equipment_changed`），`InventoryScreen` 會立刻重建正在顯示的說明框。
   - `EquipmentPanel`：面板上方的 5 個裝備欄，排列參考暗黑 2（頭盔在上方中間，身體護甲在中間，武器在左側，手套在左下，靴子在右下）。欄位位置定義在 `EquipmentPanel.SLOT_RECTS`。
   - 格子和裝備欄的預覽狀態都要「自己記住是為哪件物品算的」，並在資料一變動時立刻重算，不能等到 `_draw` 才去讀手上的物品。
 - `HeldItem`（`scenes/ui/held_item.tscn`）是「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包，也不屬於背包畫面：放在自己的 `CanvasLayer`（layer 100），永遠畫在最上層。背包格子、裝備欄和丟到地上都共用這一個，用群組 `HeldItem.GROUP` 找到它，用 `hold()` / `take()` 存取。

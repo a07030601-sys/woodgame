@@ -330,20 +330,20 @@ func _test_equipped_stats() -> void:
 func _test_tooltip() -> void:
 	var blade: ItemInstance = ItemDatabase.create_set_item("starchase_blade")
 	var lines: Array[Dictionary] = ItemTooltip.build_lines(blade)
+	# 這裡只看開頭的固定內容；件數詞綴、套裝成員與件數加成那幾行在 set_tooltip_test
 	var expected: Array[String] = ["逐星之刃", "短劍", "傷害：2–5"]
 	for modifier: Dictionary in blade.get_set_item_modifiers():
 		expected.append(StatSystem.format_modifier(modifier))
-	expected.append("逐星行裝")
 	check(
-		"套裝武器的說明：名稱、底材名、傷害、修正值，最後一行是套裝名稱",
-		_texts(lines) == expected and expected.size() == 3 + 3 + 1,
+		"套裝武器的說明開頭：名稱、底材名、傷害、固定修正值",
+		expected.size() == 3 + 3 and _texts(lines).slice(0, expected.size()) == expected,
 		_join(lines)
 	)
 	check(
-		"名稱與最後一行的套裝名稱是綠色，底材名不是",
+		"名稱是綠色，底材名不是，說明裡有套裝名稱",
 		lines[0]["color"] == ItemInstance.COLOR_SET
-		and lines[lines.size() - 1]["color"] == ItemInstance.COLOR_SET
 		and lines[1]["color"] == ItemTooltip.BASE_NAME_COLOR
+		and _texts(lines).has("逐星行裝")
 	)
 	check(
 		"綠色和其他名稱顏色都不同",
@@ -356,12 +356,11 @@ func _test_tooltip() -> void:
 	var jerkin: ItemInstance = ItemDatabase.create_set_item("mistwood_jerkin")
 	lines = ItemTooltip.build_lines(jerkin)
 	check(
-		"套裝防具的說明：名稱、底材名、防禦、修正值、套裝名稱",
-		lines.size() == 3 + jerkin.get_set_item_modifiers().size() + 1
-		and lines[0]["text"] == "霧林獵衣"
+		"套裝防具的說明開頭：名稱、底材名、防禦，說明裡有套裝名稱",
+		lines[0]["text"] == "霧林獵衣"
 		and lines[1]["text"] == "皮甲"
 		and lines[2]["text"] == "防禦：%d" % jerkin.defense
-		and lines[lines.size() - 1]["text"] == "霧林獵裝",
+		and _texts(lines).has("霧林獵裝"),
 		_join(lines)
 	)
 	var has_socket_line: bool = false
