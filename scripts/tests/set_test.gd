@@ -1,7 +1,7 @@
 extends TestBase
 
 # 套裝資料與套裝物品的測試：sets.json、set_items.json、套裝物品的固定內容、存檔還原、掉落、說明框、
-# 穿上後的屬性、除錯用的開場道具。套裝的件數加成還沒做，這裡只確認資料有讀進來。
+# 穿上後的屬性、除錯用的開場道具。套裝的件數加成在 set_bonus_test，這裡只確認加成的資料有讀進來。
 
 const PLAYER_SCENE: PackedScene = preload("res://scenes/player.tscn")
 const TEST_SEED: int = 20261013
@@ -314,40 +314,7 @@ func _test_equipped_stats() -> void:
 		"生命 %s、防禦 %s" % [stats.get_stat("life"), stats.get_stat("defense")]
 	)
 
-	# 兩套全部穿上：這次不計算件數加成，所以只有每件自己的修正值
-	var jerkin: ItemInstance = ItemDatabase.create_set_item("mistwood_jerkin")
-	var grips: ItemInstance = ItemDatabase.create_set_item("mistwood_grips")
-	var treads: ItemInstance = ItemDatabase.create_set_item("starchase_treads")
-	equipment.equip(jerkin, "armor")
-	equipment.equip(grips, "gloves")
-	equipment.equip(treads, "boots")
-	var all_modifiers: Array[Dictionary] = []
-	for item: ItemInstance in [blade, hood, jerkin, grips, treads]:
-		all_modifiers.append_array(item.get_modifiers())
-	var expected: Dictionary = StatSystem.calculate(
-		{
-			"damage_min": base_min,
-			"damage_max": base_max,
-			"attack_speed": base_attack_speed,
-			"life": base_life,
-			"defense": base_defense,
-			"move_speed": base_move_speed,
-		},
-		all_modifiers
-	)
-	var all_match: bool = true
-	var mismatch: String = ""
-	for stat_name: String in StatSystem.STAT_NAMES:
-		if not is_equal_approx(stats.get_stat(stat_name), expected[stat_name]):
-			all_match = false
-			mismatch = "%s：實際 %s，預期 %s" % [stat_name, stats.get_stat(stat_name), expected[stat_name]]
-	check("兩套全部穿上時，屬性只有每件自己的修正值，沒有件數加成", all_match, mismatch)
-	check(
-		"兩套全部穿上時的移動速度只有靴子的 +10%",
-		is_equal_approx(stats.get_stat("move_speed"), base_move_speed * 1.1),
-		str(stats.get_stat("move_speed"))
-	)
-
+	# 這裡兩套各只穿一件，沒有件數加成；件數加成的測試在 set_bonus_test
 	for slot: String in Equipment.SLOTS:
 		equipment.unequip(slot)
 	check(

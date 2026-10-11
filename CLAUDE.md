@@ -32,7 +32,7 @@
 - `data/rare_names.json`：`first_words` 是共用的字詞陣列；`second_words` 是「底材 `type` -> 字詞陣列」，每種底材 `type` 都要有一組。
 - `data/runes.json`：符文清單（陣列）。每筆的欄位：`id`、`name`、`weapon_mods`、`armor_mods`。後兩者是符文插在武器、防具上各自提供的修正值，格式就是「屬性計算」的修正值（`stat`、`value`、`type`，數值固定不擲骰）。
 - `data/runewords.json`：符文之語清單（陣列）。每筆的欄位：`id`、`name`、`runes`（符文 id，有順序）、`allowed_bases`（可用的底材 `type`）、`modifiers`（修正值，格式與符文相同）。只能用 `runes.json` 裡的符文和 `bases.json` 裡的底材類型。
-- `data/sets.json`：套裝清單（陣列）。每筆的欄位：`id`、`name`、`items`（套裝物品 id 清單）、`bonuses`（「件數（文字）-> 修正值清單」，例如 `"2"`、`"3"`）。目前只讀取，還沒有計算件數加成。
+- `data/sets.json`：套裝清單（陣列）。每筆的欄位：`id`、`name`、`items`（套裝物品 id 清單）、`bonuses`（「件數（文字）-> 修正值清單」，例如 `"2"`、`"3"`）。件數加成的計算見「裝備」。
 - `data/set_items.json`：套裝物品清單（陣列）。每筆的欄位：`id`、`name`、`base`（`bases.json` 的底材 id）、`set_id`、`modifiers`（固定的修正值）。載入時 `base` 或 `set_id` 不存在會 `push_error` 並略過；`sets.json` 的 `items` 指到不存在的套裝物品也會 `push_error`。
 - `data/item_settings.json`：物品生成的設定。`socket_chance` 是普通品質的物品生成時有孔的機率（百分比）。
 - `ItemDatabase`（Autoload）啟動時讀取並檢查以上資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)`、`get_affix(id)`、`get_rune(id)`、`get_runeword(id)`、`get_set(id)`、`get_set_item(id)` 查資料，用 `create_item(base_id)` 建立普通物品（沒有孔），用 `create_rune(rune_id)` 建立符文物品，用 `create_set_item(set_item_id)` 建立套裝物品。
@@ -68,6 +68,11 @@
   - `equip()` 回傳 `{"success": bool, "swapped_item": ItemInstance}`，與 `Inventory.place_or_swap()` 相同；`unequip()` 回傳脫下的物品。
   - 變動時發出 `equipment_changed(slot)`；`to_dict()` / `Equipment.from_dict()` 用於存檔與還原。
 - 玩家擁有一個 `Equipment`（`Player.get_equipment()`）。裝備變動時，該欄位有物品就對屬性元件 `add_source("equip_" + 欄位名, 物品的 get_modifiers())`，空了就 `remove_source`。
+- 套裝的件數加成由 `SetBonusCalculator`（`scripts/items/set_bonus_calculator.gd`）計算，只負責計算、不保存資料：
+  - `calculate(equipment)` 回傳「套裝 id -> `{"count": 件數, "modifiers": 生效的修正值清單}`」，只包含身上至少有一件的套裝。
+  - 只算穿在身上的物品，背包裡的不算；同一個 `set_item_id` 只算一次。
+  - 加成是累加的：件數達到 `bonuses` 裡的每一個門檻，該門檻的修正值都生效（穿 3 件時 2 件與 3 件的加成同時生效）。
+  - 玩家在裝備變動時重算所有套裝：有生效的加成就 `add_source("set_" + 套裝 id, 修正值清單)`，沒有就 `remove_source`。
 - 玩家空手的基礎傷害是 1～2，武器的傷害以 flat 修正值加在上面。`Player.starting_equipment`（底材 id 清單）決定開場自動穿上的普通裝備，預設是一把短劍。
 - 除錯用的開關（預設都關閉）：`Player.debug_start_items` 開場在背包放幾件隨機的魔法與稀有裝備；`Player.debug_runeword_kit` 開場在背包放入能湊出每一組符文之語的底材（孔數剛好）和需要的符文；`Player.debug_set_kit` 開場在背包放入每一套套裝的全部套裝物品。
 

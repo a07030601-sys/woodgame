@@ -26,6 +26,8 @@ const ENEMIES_LAYER_MASK: int = 1 << 1
 const MIN_ATTACK_SPEED: float = 0.01
 # 裝備在屬性元件裡的來源名稱是這個前綴加上欄位名，例如 equip_weapon
 const EQUIPMENT_SOURCE_PREFIX: String = "equip_"
+# 套裝的件數加成在屬性元件裡的來源名稱是這個前綴加上套裝 id，例如 set_mistwood
+const SET_SOURCE_PREFIX: String = "set_"
 # 除錯用
 const DEBUG_START_ITEM_COUNT: int = 6
 # 從手上丟下的物品放在腳邊：角色下方這個位置，再加上一點隨機偏移，連續丟的物品才不會完全疊在一起
@@ -363,6 +365,22 @@ func _on_equipment_changed(slot: String) -> void:
 		_stats.add_source(source_id, item.get_modifiers())
 	else:
 		_stats.remove_source(source_id)
+	_update_set_bonuses()
+
+
+# 依身上的裝備重算所有套裝的件數加成：有生效的加成就交給屬性元件，沒有就移除。
+# 每次都把所有套裝走過一遍，脫下或換掉套裝物品時才不會殘留舊的加成。
+func _update_set_bonuses() -> void:
+	var active_sets: Dictionary = SetBonusCalculator.calculate(_equipment)
+	for set_id: String in ItemDatabase.get_set_ids():
+		var source_id: String = SET_SOURCE_PREFIX + set_id
+		var modifiers: Array[Dictionary] = []
+		if active_sets.has(set_id):
+			modifiers = active_sets[set_id]["modifiers"]
+		if modifiers.is_empty():
+			_stats.remove_source(source_id)
+		else:
+			_stats.add_source(source_id, modifiers)
 
 
 func _on_stats_changed() -> void:
