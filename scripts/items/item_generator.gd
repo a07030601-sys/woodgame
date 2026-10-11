@@ -1,7 +1,7 @@
 class_name ItemGenerator
 extends RefCounted
 
-# 依品質生成帶詞綴的物品。所有隨機都來自傳入的 rng，同一個種子會生成相同的物品。
+# 依品質生成物品：魔法與稀有帶詞綴，普通可能有孔。所有隨機都來自傳入的 rng，同一個種子會生成相同的物品。
 
 const RARE_MIN_AFFIXES: int = 3
 const RARE_MAX_AFFIXES: int = 4
@@ -18,7 +18,8 @@ static func generate(base_id: String, quality: String, rng: RandomNumberGenerato
 	var item: ItemInstance = ItemDatabase.create_item(base_id, rng)
 	if item == null:
 		return null
-	var base_type: String = ItemDatabase.get_base(base_id)["type"]
+	var base: Dictionary = ItemDatabase.get_base(base_id)
+	var base_type: String = base["type"]
 
 	if quality == ItemInstance.QUALITY_MAGIC:
 		item.quality = quality
@@ -30,7 +31,21 @@ static func generate(base_id: String, quality: String, rng: RandomNumberGenerato
 	elif quality != ItemInstance.QUALITY_NORMAL:
 		push_warning("ItemGenerator：不認得的品質 %s，當成普通品質" % quality)
 
+	# 只有普通品質的物品會有孔，魔法與稀有一律 0 孔
+	if item.quality == ItemInstance.QUALITY_NORMAL:
+		item.sockets = _roll_sockets(base, rng)
+
 	return item
+
+
+# 依 ItemDatabase 的 socket_chance 決定有沒有孔，有孔時孔數在 1 到底材的 max_sockets 之間
+static func _roll_sockets(base: Dictionary, rng: RandomNumberGenerator) -> int:
+	var max_sockets: int = int(base.get("max_sockets", 0))
+	var socket_chance: float = ItemDatabase.get_socket_chance()
+	# randf() 的範圍包含 0 和 1，機率 0 要另外擋掉才會真的完全沒有孔
+	if max_sockets <= 0 or socket_chance <= 0.0 or rng.randf() * 100.0 > socket_chance:
+		return 0
+	return rng.randi_range(1, max_sockets)
 
 
 # 魔法：最多 1 個前綴加 1 個後綴，至少 1 個

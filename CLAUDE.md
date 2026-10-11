@@ -30,16 +30,20 @@
   - `weight`（出現權重）、`allowed_types`（可出現的底材 `type`）
   - `modifiers`：每筆包含 `stat`、`type`（`flat` 或 `percent`）、`min`、`max`；`stat` 必須在 `StatSystem.STAT_NAMES` 內
 - `data/rare_names.json`：`first_words` 是共用的字詞陣列；`second_words` 是「底材 `type` -> 字詞陣列」，每種底材 `type` 都要有一組。
-- `ItemDatabase`（Autoload）啟動時讀取並檢查以上資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)`、`get_affix(id)` 查資料，用 `create_item(base_id)` 建立普通物品。
-- `ItemInstance`（`scripts/items/item_instance.gd`，`RefCounted`）代表一件實際的物品，欄位：`base_id`、`quality`、`sockets`、`socketed_runes`、`affixes`、`defense`（生成時擲出的防禦值）、`rare_name`（稀有物品的名稱）。
+- `data/runes.json`：符文清單（陣列）。每筆的欄位：`id`、`name`、`weapon_mods`、`armor_mods`。後兩者是符文插在武器、防具上各自提供的修正值，格式就是「屬性計算」的修正值（`stat`、`value`、`type`，數值固定不擲骰）。
+- `data/item_settings.json`：物品生成的設定。`socket_chance` 是普通品質的物品生成時有孔的機率（百分比）。
+- `ItemDatabase`（Autoload）啟動時讀取並檢查以上資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)`、`get_affix(id)`、`get_rune(id)` 查資料，用 `create_item(base_id)` 建立普通物品（沒有孔），用 `create_rune(rune_id)` 建立符文物品。
+- `ItemInstance`（`scripts/items/item_instance.gd`，`RefCounted`）代表一件實際的物品，欄位：`base_id`、`rune_id`、`quality`、`sockets`（孔數）、`socketed_runes`（已插入的符文 id）、`affixes`、`defense`（生成時擲出的防禦值）、`rare_name`（稀有物品的名稱）。
+  - 符文也是 `ItemInstance`：`rune_id` 有值、`base_id` 是空的（`is_rune()`），佔 1 × 1 格，沒有裝備欄位，本身不提供修正值。背包、手上的物品、地上物品都走同一套流程，不另外做一套。
   - 底材與詞綴的固定資料不複製進物品，需要時用 id 查 `ItemDatabase`。
   - `affixes` 的每一項是 `{"id": 詞綴 id, "modifiers": [已擲好數值的修正值]}`。
   - `get_modifiers()` 回傳物品的所有修正值；`to_dict()` / `ItemInstance.from_dict()` 用於存檔與還原。
-  - `get_display_name()` 依下方命名規則組出名稱；`get_base_name()` 回傳底材名。`get_quality_color()`：普通白、魔法藍、稀有黃。
+  - `get_display_name()` 依下方命名規則組出名稱；`get_base_name()` 回傳底材名（符文回傳符文名）。`get_quality_color()`：普通白、魔法藍、稀有黃。
+  - 介面上顯示物品（名稱文字、背包裡的邊框）一律用 `get_display_color()`：符文橘色、有孔的普通物品灰色，其餘是品質顏色。
 - `ItemGenerator.generate(base_id, quality, rng)`（`scripts/items/item_generator.gd`）依品質生成物品，所有隨機都來自傳入的 `rng`：
-  - `normal`：沒有詞綴。
-  - `magic`：最多 1 個前綴加 1 個後綴，至少 1 個。
-  - `rare`：3～4 個詞綴，前綴與後綴各最多 2 個。
+  - `normal`：沒有詞綴。依 `socket_chance` 決定有沒有孔，有孔時孔數在 1 到底材 `max_sockets` 之間。
+  - `magic`：最多 1 個前綴加 1 個後綴，至少 1 個。一律 0 孔。
+  - `rare`：3～4 個詞綴，前綴與後綴各最多 2 個。一律 0 孔。
   - 詞綴依 `weight` 抽選，只選 `allowed_types` 符合的，同一件物品不重複 `group`；每條修正值在 `min` 到 `max` 之間擲出整數。
 
 - `Inventory`（`scripts/items/inventory.gd`，`RefCounted`）是背包的格子資料，不含介面，預設 10 × 4。
@@ -63,7 +67,7 @@
 - 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
 - `scenes/ui/inventory_screen.tscn`（`InventoryScreen`）由幾個獨立的部分組成，腳本都在 `scripts/ui/`：
   - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
-  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。
+  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」；符文分成「武器：」與「防具：」兩段，各自列出修正值。
   - `EquipmentPanel`：面板上方的 5 個裝備欄，排列參考暗黑 2（頭盔在上方中間，身體護甲在中間，武器在左側，手套在左下，靴子在右下）。欄位位置定義在 `EquipmentPanel.SLOT_RECTS`。
   - 格子和裝備欄的預覽狀態都要「自己記住是為哪件物品算的」，並在資料一變動時立刻重算，不能等到 `_draw` 才去讀手上的物品。
 - `HeldItem`（`scenes/ui/held_item.tscn`）是「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包，也不屬於背包畫面：放在自己的 `CanvasLayer`（layer 100），永遠畫在最上層。背包格子、裝備欄和丟到地上都共用這一個，用群組 `HeldItem.GROUP` 找到它，用 `hold()` / `take()` 存取。
@@ -78,8 +82,9 @@
 - `data/drop_tables.json`：「掉落表 id -> 掉落表」，目前只有 `default`。每張表的欄位：
   - `drop_chance`：掉落機率，以百分比表示（`40` 代表 40%）。
   - `quality_weights`：「品質 -> 權重」，權重為 0 或沒列出的品質不會出現。
+  - `rune_weight`：掉出符文的權重，與品質權重一起比；可以省略，省略或為 0 時不掉符文。
   - 由 `ItemDatabase` 讀取與檢查，用 `get_drop_table(id)` 查詢；機率與權重不寫死在程式裡。
-- `DropRoller.roll(table_id, rng)`（`scripts/items/drop_roller.gd`）擲一次掉落，沒掉落時回傳 null；所有隨機都來自傳入的 `rng`。掉落時底材從所有底材平均抽選，再交給 `ItemGenerator.generate()`。
+- `DropRoller.roll(table_id, rng)`（`scripts/items/drop_roller.gd`）擲一次掉落，沒掉落時回傳 null；所有隨機都來自傳入的 `rng`。掉出裝備時底材從所有底材平均抽選，再交給 `ItemGenerator.generate()`；掉出符文時從所有符文平均抽一顆。
 - 怪物死亡時用 `Monster.drop_table_id`（預設 `default`）擲骰，掉落的物品放在死亡位置附近。
 - `GroundItem`（`scenes/ground_item.tscn`）是地上物品：以品質顏色顯示物品名稱，滑鼠滑過時變亮。用 `GroundItem.spawn(parent, item, 位置)` 建立，加到主場景底下；它只負責顯示，點擊與撿取都由 `Player` 處理。
 - 點擊地上物品時角色走過去（`Player.move_to_pick_up()`），抵達後呼叫 `Player.pick_up()`：`add_item_auto` 成功就從地上移除；背包滿了就留在地上，並發出 `Player.inventory_full`。

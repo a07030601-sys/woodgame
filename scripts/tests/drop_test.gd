@@ -48,7 +48,8 @@ func _test_default_table() -> void:
 		is_equal_approx(float(table.get("drop_chance", -1.0)), 40.0)
 		and is_equal_approx(float(weights.get("normal", -1.0)), 60.0)
 		and is_equal_approx(float(weights.get("magic", -1.0)), 30.0)
-		and is_equal_approx(float(weights.get("rare", -1.0)), 10.0),
+		and is_equal_approx(float(weights.get("rare", -1.0)), 10.0)
+		and is_equal_approx(float(table.get("rune_weight", -1.0)), 5.0),
 		str(table)
 	)
 	check("不存在的掉落表擲不出物品", DropRoller.roll("not_exist", _make_rng(TEST_SEED)) == null)
@@ -76,7 +77,7 @@ func _test_drop_chance() -> void:
 	var counts: Dictionary = _count_qualities(
 		ItemDatabase.get_drop_table(DropRoller.DEFAULT_TABLE_ID), rng
 	)
-	var drop_count: int = counts["normal"] + counts["magic"] + counts["rare"]
+	var drop_count: int = ROLL_COUNT - counts["none"]
 	check(
 		"default 表的掉落次數接近 40%",
 		drop_count > ROLL_COUNT * 0.35 and drop_count < ROLL_COUNT * 0.45,
@@ -85,6 +86,11 @@ func _test_drop_chance() -> void:
 	check(
 		"default 表的品質數量：普通最多、稀有最少，三種都有",
 		counts["normal"] > counts["magic"] and counts["magic"] > counts["rare"] and counts["rare"] > 0,
+		str(counts)
+	)
+	check(
+		"default 表會掉符文，數量比稀有少",
+		counts["rune"] > 0 and counts["rune"] < counts["rare"],
 		str(counts)
 	)
 
@@ -114,6 +120,20 @@ func _test_zero_weight() -> void:
 	# 沒列出的品質等於權重 0
 	counts = _count_qualities({"drop_chance": 100, "quality_weights": {"normal": 5}}, rng)
 	check("沒列出權重的品質不會出現", counts["normal"] == ROLL_COUNT, str(counts))
+
+	check("沒有 rune_weight 的掉落表不會掉符文", counts["rune"] == 0, str(counts))
+
+	counts = _count_qualities(
+		{"drop_chance": 100, "quality_weights": {"normal": 60, "magic": 30, "rare": 10}, "rune_weight": 0},
+		rng
+	)
+	check("rune_weight 為 0 時不會掉符文", counts["rune"] == 0 and counts["none"] == 0, str(counts))
+
+	counts = _count_qualities(
+		{"drop_chance": 100, "quality_weights": {"normal": 0, "magic": 0, "rare": 0}, "rune_weight": 5},
+		rng
+	)
+	check("只有符文有權重時全部都是符文", counts["rune"] == ROLL_COUNT, str(counts))
 
 	check(
 		"所有權重都是 0 時抽不出品質",
@@ -266,7 +286,13 @@ func _test_monster_drop() -> void:
 	for ground_item: GroundItem in dropped:
 		if ground_item.global_position.distance_to(death_position) > Monster.DROP_SCATTER_RADIUS + 0.01:
 			all_near = false
-		if ground_item.item == null or not ItemDatabase.has_base(ground_item.item.base_id):
+		var item: ItemInstance = ground_item.item
+		if item == null:
+			all_have_item = false
+		elif item.is_rune():
+			if not ItemDatabase.has_rune(item.rune_id):
+				all_have_item = false
+		elif not ItemDatabase.has_base(item.base_id):
 			all_have_item = false
 	check(
 		"殺死 %d 隻怪物會掉出物品，但不是每隻都掉" % MONSTER_COUNT,
@@ -386,13 +412,15 @@ func _roll_many(seed_value: int) -> Array[Dictionary]:
 	return results
 
 
-# 用 table 擲 ROLL_COUNT 次，回傳每種品質出現的次數，沒掉落算在 "none"
+# 用 table 擲 ROLL_COUNT 次，回傳每種品質出現的次數，符文算在 "rune"，沒掉落算在 "none"
 func _count_qualities(table: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
-	var counts: Dictionary = {"none": 0, "normal": 0, "magic": 0, "rare": 0}
+	var counts: Dictionary = {"none": 0, "normal": 0, "magic": 0, "rare": 0, "rune": 0}
 	for i: int in ROLL_COUNT:
 		var item: ItemInstance = DropRoller.roll_table(table, rng)
 		if item == null:
 			counts["none"] += 1
+		elif item.is_rune():
+			counts["rune"] += 1
 		else:
 			counts[item.quality] += 1
 	return counts

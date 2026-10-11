@@ -3,6 +3,7 @@ extends RefCounted
 
 # 一件實際存在的物品。底材與詞綴的固定資料（名稱、傷害範圍等）不存在這裡，
 # 需要時用 id 向 ItemDatabase 查詢。
+# 符文也是物品：rune_id 有值、base_id 是空的，佔 1 × 1 格，走同一套背包與地上物品流程。
 
 const QUALITY_NORMAL: String = "normal"
 const QUALITY_MAGIC: String = "magic"
@@ -12,9 +13,17 @@ const QUALITIES: Array[String] = [QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE]
 const COLOR_NORMAL: Color = Color(1.0, 1.0, 1.0, 1.0)
 const COLOR_MAGIC: Color = Color(0.45, 0.55, 1.0, 1.0)
 const COLOR_RARE: Color = Color(1.0, 0.95, 0.35, 1.0)
+# 有孔的普通物品
+const COLOR_SOCKETED: Color = Color(0.6, 0.6, 0.6, 1.0)
+const COLOR_RUNE: Color = Color(1.0, 0.6, 0.15, 1.0)
+
+const RUNE_SIZE: Vector2i = Vector2i(1, 1)
 
 var base_id: String = ""
+# 符文物品的符文 id，不是符文時為空字串
+var rune_id: String = ""
 var quality: String = QUALITY_NORMAL
+# 孔數，只有普通品質的物品會有
 var sockets: int = 0
 # 已鑲嵌的符文 id，依鑲嵌順序排列
 var socketed_runes: Array[String] = []
@@ -26,9 +35,16 @@ var defense: int = 0
 var rare_name: String = ""
 
 
-# 回傳這件物品提供的所有修正值，格式見 StatSystem。符文之後再加。
+func is_rune() -> bool:
+	return not rune_id.is_empty()
+
+
+# 回傳這件物品提供的所有修正值，格式見 StatSystem。已插入的符文之後再加。
+# 符文本身不提供任何修正值，要插進裝備才有效果。
 func get_modifiers() -> Array[Dictionary]:
 	var modifiers: Array[Dictionary] = []
+	if is_rune():
+		return modifiers
 
 	var base: Dictionary = ItemDatabase.get_base(base_id)
 	if base.has("damage"):
@@ -60,6 +76,8 @@ func get_affix_modifiers() -> Array[Dictionary]:
 
 # 背包佔用的格數 [寬, 高]，查不到底材時回傳 Vector2i.ZERO
 func get_size() -> Vector2i:
+	if is_rune():
+		return RUNE_SIZE
 	var base: Dictionary = ItemDatabase.get_base(base_id)
 	if base.is_empty():
 		return Vector2i.ZERO
@@ -67,13 +85,18 @@ func get_size() -> Vector2i:
 	return Vector2i(int(size[0]), int(size[1]))
 
 
-# 底材的裝備欄位（weapon、helm 等），查不到底材時回傳空字串
+# 底材的裝備欄位（weapon、helm 等），符文或查不到底材時回傳空字串
 func get_slot() -> String:
+	if is_rune():
+		return ""
 	var base: Dictionary = ItemDatabase.get_base(base_id)
 	return str(base.get("slot", ""))
 
 
+# 符文回傳符文名
 func get_base_name() -> String:
+	if is_rune():
+		return str(ItemDatabase.get_rune(rune_id).get("name", rune_id))
 	var base: Dictionary = ItemDatabase.get_base(base_id)
 	return str(base.get("name", base_id))
 
@@ -82,6 +105,8 @@ func get_base_name() -> String:
 # 稀有：生成時擲出的名稱，不含底材名，要顯示底材請另外用 get_base_name()。
 func get_display_name() -> String:
 	var base_name: String = get_base_name()
+	if is_rune():
+		return base_name
 
 	if quality == QUALITY_RARE and not rare_name.is_empty():
 		return rare_name
@@ -111,9 +136,19 @@ func get_quality_color() -> Color:
 	return COLOR_NORMAL
 
 
+# 顯示物品時用的顏色（名稱文字、背包裡的邊框）：符文橘色、有孔的普通物品灰色，其餘是品質顏色
+func get_display_color() -> Color:
+	if is_rune():
+		return COLOR_RUNE
+	if quality == QUALITY_NORMAL and sockets > 0:
+		return COLOR_SOCKETED
+	return get_quality_color()
+
+
 func to_dict() -> Dictionary:
 	return {
 		"base_id": base_id,
+		"rune_id": rune_id,
 		"quality": quality,
 		"sockets": sockets,
 		"socketed_runes": socketed_runes.duplicate(),
@@ -127,6 +162,7 @@ func to_dict() -> Dictionary:
 static func from_dict(data: Dictionary) -> ItemInstance:
 	var item: ItemInstance = ItemInstance.new()
 	item.base_id = str(data.get("base_id", ""))
+	item.rune_id = str(data.get("rune_id", ""))
 	item.quality = str(data.get("quality", QUALITY_NORMAL))
 	item.sockets = int(data.get("sockets", 0))
 	item.defense = int(data.get("defense", 0))

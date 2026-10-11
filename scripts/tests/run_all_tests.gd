@@ -65,6 +65,8 @@ func _run_test_scene(scene_file: String) -> void:
 	else:
 		_record(scene_file, test.pass_count, test.fail_count, "")
 	test.queue_free()
+	# 等這個測試的節點真的被移除再跑下一個，否則下一個測試用群組找節點時會找到上一個測試留下的
+	await get_tree().process_frame
 
 
 func _record(scene_file: String, pass_count: int, fail_count: int, problem: String) -> void:

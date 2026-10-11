@@ -1,0 +1,64 @@
+[
+	{
+		"id": "flint",
+		"name": "燧紋",
+		"weapon_mods": [
+			{"stat": "damage_max", "value": 2, "type": "flat"}
+		],
+		"armor_mods": [
+			{"stat": "defense", "value": 3, "type": "flat"}
+		]
+	},
+	{
+		"id": "gale",
+		"name": "嵐紋",
+		"weapon_mods": [
+			{"stat": "attack_speed", "value": 4, "type": "percent"}
+		],
+		"armor_mods": [
+			{"stat": "move_speed", "value": 3, "type": "percent"}
+		]
+	},
+	{
+		"id": "crag",
+		"name": "岩紋",
+		"weapon_mods": [
+			{"stat": "strength", "value": 2, "type": "flat"}
+		],
+		"armor_mods": [
+			{"stat": "defense", "value": 6, "type": "percent"}
+		]
+	},
+	{
+		"id": "spring",
+		"name": "泉紋",
+		"weapon_mods": [
+			{"stat": "life", "value": 5, "type": "flat"}
+		],
+		"armor_mods": [
+			{"stat": "vitality", "value": 2, "type": "flat"}
+		]
+	},
+	{
+		"id": "edge",
+		"name": "鋒紋",
+		"weapon_mods": [
+			{"stat": "damage_min", "value": 1, "type": "flat"},
+			{"stat": "damage_max", "value": 1, "type": "flat"}
+		],
+		"armor_mods": [
+			{"stat": "strength", "value": 1, "type": "flat"}
+		]
+	},
+	{
+		"id": "ruin",
+		"name": "墟紋",
+		"weapon_mods": [
+			{"stat": "damage_min", "value": 5, "type": "percent"},
+			{"stat": "damage_max", "value": 5, "type": "percent"}
+		],
+		"armor_mods": [
+			{"stat": "life", "value": 4, "type": "percent"}
+		]
+	}
+]

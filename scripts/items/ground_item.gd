@@ -74,7 +74,7 @@ func _refresh() -> void:
 	if item == null:
 		return
 
-	var color: Color = item.get_quality_color()
+	var color: Color = item.get_display_color()
 	_label.text = item.get_display_name()
 	_label.add_theme_color_override(
 		"font_color", color.lightened(HOVER_LIGHTEN) if _is_hovered else color

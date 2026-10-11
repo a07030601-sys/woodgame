@@ -9,6 +9,9 @@ const BASE_NAME_COLOR: Color = Color(0.75, 0.75, 0.75, 1.0)
 const BASE_STAT_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 const AFFIX_COLOR: Color = Color(0.55, 0.65, 1.0, 1.0)
 const MOUSE_OFFSET: Vector2 = Vector2(18.0, 18.0)
+const RUNE_TYPE_TEXT: String = "符文"
+const RUNE_WEAPON_HEADER: String = "武器："
+const RUNE_ARMOR_HEADER: String = "防具："
 
 @onready var _lines: VBoxContainer = $Lines
 
@@ -44,10 +47,15 @@ func show_item(item: ItemInstance) -> void:
 
 
 # 說明框的每一行：{"text": String, "color": Color}。
-# 第一行是名稱（品質顏色），稀有物品第二行是底材名，接著是底材的傷害或防禦，再來是每條詞綴修正值。
+# 第一行是名稱（顏色見 ItemInstance.get_display_color()），稀有物品第二行是底材名，
+# 接著是底材的傷害或防禦，有孔的物品顯示「插槽 (已插入/孔數)」，再來是每條詞綴修正值。
+# 符文的內容不同，見 _build_rune_lines()。
 static func build_lines(item: ItemInstance) -> Array[Dictionary]:
+	if item.is_rune():
+		return _build_rune_lines(item)
+
 	var lines: Array[Dictionary] = []
-	lines.append({"text": item.get_display_name(), "color": item.get_quality_color()})
+	lines.append({"text": item.get_display_name(), "color": item.get_display_color()})
 	if item.quality == ItemInstance.QUALITY_RARE:
 		lines.append({"text": item.get_base_name(), "color": BASE_NAME_COLOR})
 
@@ -57,8 +65,32 @@ static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 		lines.append({"text": "傷害：%d–%d" % [int(damage[0]), int(damage[1])], "color": BASE_STAT_COLOR})
 	if base.has("defense"):
 		lines.append({"text": "防禦：%d" % item.defense, "color": BASE_STAT_COLOR})
+	if item.sockets > 0:
+		lines.append({
+			"text": "插槽 (%d/%d)" % [item.socketed_runes.size(), item.sockets],
+			"color": ItemInstance.COLOR_SOCKETED,
+		})
 
 	for modifier: Dictionary in item.get_affix_modifiers():
+		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
+	return lines
+
+
+# 符文的說明：名稱、「符文」，接著分成「武器：」與「防具：」兩段，各自列出插在該類裝備上的修正值，
+# 兩段之間空一行。
+static func _build_rune_lines(item: ItemInstance) -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	lines.append({"text": item.get_display_name(), "color": item.get_display_color()})
+	lines.append({"text": RUNE_TYPE_TEXT, "color": BASE_NAME_COLOR})
+
+	var rune: Dictionary = ItemDatabase.get_rune(item.rune_id)
+	lines.append({"text": RUNE_WEAPON_HEADER, "color": BASE_STAT_COLOR})
+	for modifier: Dictionary in rune.get("weapon_mods", []):
+		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
+
+	lines.append({"text": "", "color": BASE_STAT_COLOR})
+	lines.append({"text": RUNE_ARMOR_HEADER, "color": BASE_STAT_COLOR})
+	for modifier: Dictionary in rune.get("armor_mods", []):
 		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
 	return lines
 

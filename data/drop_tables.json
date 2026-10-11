@@ -5,6 +5,7 @@
 			"normal": 60,
 			"magic": 30,
 			"rare": 10
-		}
+		},
+		"rune_weight": 5
 	}
 }

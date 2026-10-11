@@ -81,14 +81,14 @@ func click_at(local_position: Vector2) -> void:
 			_held.hold(item)
 
 
-# 畫一件物品：品質顏色的邊框加上底材名。背包格子和手上的物品共用。
+# 畫一件物品：邊框（顏色見 ItemInstance.get_display_color()）加上底材名或符文名。背包格子和手上的物品共用。
 static func draw_item(
 	canvas: CanvasItem, rect: Rect2, item: ItemInstance, font: Font, alpha: float
 ) -> void:
 	var inner: Rect2 = rect.grow(-1.0)
 	var fill_color: Color = ITEM_FILL_COLOR
 	fill_color.a = alpha
-	var border_color: Color = item.get_quality_color()
+	var border_color: Color = item.get_display_color()
 	border_color.a = alpha
 	canvas.draw_rect(inner, fill_color)
 	canvas.draw_rect(inner.grow(-ITEM_BORDER_WIDTH * 0.5), border_color, false, ITEM_BORDER_WIDTH)
