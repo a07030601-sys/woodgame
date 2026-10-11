@@ -8,6 +8,7 @@ const RARE_NAMES_PATH: String = "res://data/rare_names.json"
 const DROP_TABLES_PATH: String = "res://data/drop_tables.json"
 const RUNES_PATH: String = "res://data/runes.json"
 const ITEM_SETTINGS_PATH: String = "res://data/item_settings.json"
+const RUNEWORDS_PATH: String = "res://data/runewords.json"
 
 const SLOT_WEAPON: String = "weapon"
 const VALID_SLOTS: Array[String] = ["weapon", "helm", "armor", "gloves", "boots"]
@@ -27,6 +28,8 @@ const REQUIRED_RUNE_FIELDS: Array[String] = ["id", "name", "weapon_mods", "armor
 const RUNE_MODS_FIELDS: Array[String] = ["weapon_mods", "armor_mods"]
 const REQUIRED_RUNE_MODIFIER_FIELDS: Array[String] = ["stat", "value", "type"]
 
+const REQUIRED_RUNEWORD_FIELDS: Array[String] = ["id", "name", "runes", "allowed_bases", "modifiers"]
+
 # 底材 id -> 底材資料
 var _bases: Dictionary = {}
 # 詞綴 id -> 詞綴資料
@@ -41,6 +44,8 @@ var _drop_tables: Dictionary = {}
 var _runes: Dictionary = {}
 # 普通品質的物品生成時有孔的機率（百分比）
 var _socket_chance: float = 0.0
+# 符文之語 id -> 符文之語資料
+var _runewords: Dictionary = {}
 
 
 func _ready() -> void:
@@ -48,6 +53,7 @@ func _ready() -> void:
 	_load_affixes()
 	_load_rare_names()
 	_load_runes()
+	_load_runewords()
 	_load_drop_tables()
 	_load_item_settings()
 
@@ -142,6 +148,30 @@ func create_rune(rune_id: String) -> ItemInstance:
 	var item: ItemInstance = ItemInstance.new()
 	item.rune_id = rune_id
 	return item
+
+
+# 符文之語：{"id", "name", "runes": 依順序的符文 id, "allowed_bases": 可用的底材 type, "modifiers": 修正值}。
+# 找不到時警告並回傳空的 Dictionary
+func get_runeword(id: String) -> Dictionary:
+	if not _runewords.has(id):
+		push_warning("ItemDatabase：找不到符文之語 %s" % id)
+		return {}
+	return _runewords[id]
+
+
+func has_runeword(id: String) -> bool:
+	return _runewords.has(id)
+
+
+func get_runeword_count() -> int:
+	return _runewords.size()
+
+
+# 所有符文之語的 id，順序與 runewords.json 相同
+func get_runeword_ids() -> Array[String]:
+	var ids: Array[String] = []
+	ids.assign(_runewords.keys())
+	return ids
 
 
 # 普通品質的物品生成時有孔的機率，以百分比表示（50 代表 50%）
@@ -254,6 +284,17 @@ func _load_runes() -> void:
 	for entry: Variant in data:
 		if _is_valid_rune(entry):
 			_runes[entry["id"]] = entry
+
+
+func _load_runewords() -> void:
+	_runewords.clear()
+	var data: Variant = _load_json(RUNEWORDS_PATH, TYPE_ARRAY)
+	if data == null:
+		return
+
+	for entry: Variant in data:
+		if _is_valid_runeword(entry):
+			_runewords[entry["id"]] = entry
 
 
 func _load_item_settings() -> void:
@@ -509,28 +550,86 @@ func _is_valid_rune(entry: Variant) -> bool:
 			push_warning("ItemDatabase：略過 %s 不是非空陣列的符文 %s" % [mods_field, id])
 			return false
 		for modifier: Variant in modifiers:
-			if not _is_valid_rune_modifier(modifier, id):
+			if not _is_valid_fixed_modifier(modifier, "符文 %s" % id):
 				return false
 
 	return true
 
 
-# 符文的修正值是固定數值，格式與 StatSystem 的修正值相同
-func _is_valid_rune_modifier(modifier: Variant, rune_id: String) -> bool:
+# 有問題的符文之語只警告並略過，不讓遊戲崩潰。要在底材與符文都讀完之後才能檢查。
+func _is_valid_runeword(entry: Variant) -> bool:
+	if typeof(entry) != TYPE_DICTIONARY:
+		push_warning("ItemDatabase：略過不是物件的符文之語 %s" % str(entry))
+		return false
+
+	for field: String in REQUIRED_RUNEWORD_FIELDS:
+		if not entry.has(field):
+			push_warning("ItemDatabase：略過缺少 %s 欄位的符文之語 %s" % [field, str(entry)])
+			return false
+
+	var id: Variant = entry["id"]
+	if typeof(id) != TYPE_STRING or id == "":
+		push_warning("ItemDatabase：略過 id 不合法的符文之語 %s" % str(entry))
+		return false
+	if _runewords.has(id):
+		push_warning("ItemDatabase：略過 id 重複的符文之語 %s" % id)
+		return false
+
+	if typeof(entry["name"]) != TYPE_STRING or entry["name"] == "":
+		push_warning("ItemDatabase：略過 name 不合法的符文之語 %s" % id)
+		return false
+
+	var runes: Variant = entry["runes"]
+	if typeof(runes) != TYPE_ARRAY or runes.is_empty():
+		push_warning("ItemDatabase：略過 runes 不是非空陣列的符文之語 %s" % id)
+		return false
+	for rune_id: Variant in runes:
+		if typeof(rune_id) != TYPE_STRING or not _runes.has(rune_id):
+			push_warning("ItemDatabase：略過符文之語 %s，runes.json 裡沒有符文 %s" % [id, str(rune_id)])
+			return false
+
+	var base_types: Array[String] = []
+	for base: Dictionary in _bases.values():
+		base_types.append(base["type"])
+	var allowed_bases: Variant = entry["allowed_bases"]
+	if typeof(allowed_bases) != TYPE_ARRAY or allowed_bases.is_empty():
+		push_warning("ItemDatabase：略過 allowed_bases 不是非空陣列的符文之語 %s" % id)
+		return false
+	for base_type: Variant in allowed_bases:
+		if typeof(base_type) != TYPE_STRING or not base_types.has(base_type):
+			push_warning(
+				"ItemDatabase：略過符文之語 %s，bases.json 裡沒有底材類型 %s" % [id, str(base_type)]
+			)
+			return false
+
+	var modifiers: Variant = entry["modifiers"]
+	if typeof(modifiers) != TYPE_ARRAY or modifiers.is_empty():
+		push_warning("ItemDatabase：略過 modifiers 不是非空陣列的符文之語 %s" % id)
+		return false
+	for modifier: Variant in modifiers:
+		if not _is_valid_fixed_modifier(modifier, "符文之語 %s" % id):
+			return false
+
+	return true
+
+
+# 符文與符文之語的修正值是固定數值，格式與 StatSystem 的修正值相同。
+# owner_label 用在警告訊息裡，例如「符文 flint」。
+func _is_valid_fixed_modifier(modifier: Variant, owner_label: String) -> bool:
 	if typeof(modifier) != TYPE_DICTIONARY:
-		push_warning("ItemDatabase：略過修正值含有非物件項目的符文 %s" % rune_id)
+		push_warning("ItemDatabase：略過修正值含有非物件項目的%s" % owner_label)
 		return false
 
 	for field: String in REQUIRED_RUNE_MODIFIER_FIELDS:
 		if not modifier.has(field):
-			push_warning("ItemDatabase：略過修正值缺少 %s 欄位的符文 %s" % [field, rune_id])
+			push_warning("ItemDatabase：略過修正值缺少 %s 欄位的%s" % [field, owner_label])
 			return false
 
 	var stat: Variant = modifier["stat"]
 	if typeof(stat) != TYPE_STRING or not StatSystem.STAT_NAMES.has(stat):
 		push_warning(
-			"ItemDatabase：略過符文 %s，stat 名稱 %s 不在 StatSystem 的屬性清單內"
-			% [rune_id, str(stat)]
+			"ItemDatabase：略過%s，stat 名稱 %s 不在 StatSystem 的屬性清單內"
+			% [owner_label, str(stat)]
 		)
 		return false
 
@@ -538,11 +637,11 @@ func _is_valid_rune_modifier(modifier: Variant, rune_id: String) -> bool:
 	if typeof(modifier_type) != TYPE_STRING or (
 		modifier_type != StatSystem.MODIFIER_FLAT and modifier_type != StatSystem.MODIFIER_PERCENT
 	):
-		push_warning("ItemDatabase：略過修正值 type 不是 flat 或 percent 的符文 %s" % rune_id)
+		push_warning("ItemDatabase：略過修正值 type 不是 flat 或 percent 的%s" % owner_label)
 		return false
 
 	if not _is_number(modifier["value"]):
-		push_warning("ItemDatabase：略過修正值 value 不是數字的符文 %s" % rune_id)
+		push_warning("ItemDatabase：略過修正值 value 不是數字的%s" % owner_label)
 		return false
 
 	return true

@@ -16,6 +16,8 @@ const COLOR_RARE: Color = Color(1.0, 0.95, 0.35, 1.0)
 # 有孔的普通物品
 const COLOR_SOCKETED: Color = Color(0.6, 0.6, 0.6, 1.0)
 const COLOR_RUNE: Color = Color(1.0, 0.6, 0.15, 1.0)
+# 符文之語：暗金色
+const COLOR_RUNEWORD: Color = Color(0.78, 0.66, 0.38, 1.0)
 
 const RUNE_SIZE: Vector2i = Vector2i(1, 1)
 
@@ -27,6 +29,8 @@ var quality: String = QUALITY_NORMAL
 var sockets: int = 0
 # 已鑲嵌的符文 id，依鑲嵌順序排列
 var socketed_runes: Array[String] = []
+# 孔全部插滿且符合配方時記下的符文之語 id，不是符文之語時為空字串
+var runeword_id: String = ""
 # 每個詞綴是 {"id": 詞綴 id, "modifiers": [已擲好數值的修正值, ...]}，修正值格式見 StatSystem
 var affixes: Array = []
 # 生成時擲出的防禦值，武器為 0
@@ -49,14 +53,22 @@ func can_insert_rune(rune_item: ItemInstance) -> bool:
 
 
 # 把符文插進下一個空孔，成功時回傳 true。插入後不能取出，呼叫端要自己把那顆符文物品丟掉。
+# 孔全部插滿時比對一次符文之語，符合配方就記下 runeword_id。
 func insert_rune(rune_item: ItemInstance) -> bool:
 	if not can_insert_rune(rune_item):
 		return false
 	socketed_runes.append(rune_item.rune_id)
+	if socketed_runes.size() == sockets:
+		runeword_id = RunewordMatcher.find_match(self)
 	return true
 
 
-# 回傳這件物品提供的所有修正值，格式見 StatSystem：底材、詞綴，再加上已插入的符文。
+func is_runeword() -> bool:
+	return not runeword_id.is_empty()
+
+
+# 回傳這件物品提供的所有修正值，格式見 StatSystem：底材、詞綴、已插入的符文，再加上符文之語。
+# 符文各自的效果與符文之語的效果是疊加的。
 # 符文本身不提供任何修正值，要插進裝備才有效果。
 func get_modifiers() -> Array[Dictionary]:
 	var modifiers: Array[Dictionary] = []
@@ -73,6 +85,25 @@ func get_modifiers() -> Array[Dictionary]:
 
 	modifiers.append_array(get_affix_modifiers())
 	modifiers.append_array(get_rune_modifiers())
+	modifiers.append_array(get_runeword_modifiers())
+	return modifiers
+
+
+# 只回傳符文之語提供的修正值，不是符文之語時回傳空陣列
+func get_runeword_modifiers() -> Array[Dictionary]:
+	var modifiers: Array[Dictionary] = []
+	if not is_runeword():
+		return modifiers
+
+	var runeword: Dictionary = ItemDatabase.get_runeword(runeword_id)
+	for modifier: Variant in runeword.get("modifiers", []):
+		if typeof(modifier) == TYPE_DICTIONARY:
+			# JSON 讀進來的 value 可能是整數，統一轉成 float
+			modifiers.append({
+				"stat": modifier["stat"],
+				"value": float(modifier["value"]),
+				"type": modifier["type"],
+			})
 	return modifiers
 
 
@@ -142,10 +173,13 @@ func get_base_name() -> String:
 
 # 普通：底材名。魔法：後綴 + 前綴 + 底材名，底材名一律在最後。
 # 稀有：生成時擲出的名稱，不含底材名，要顯示底材請另外用 get_base_name()。
+# 符文之語：符文之語的名稱，同樣不含底材名。
 func get_display_name() -> String:
 	var base_name: String = get_base_name()
 	if is_rune():
 		return base_name
+	if is_runeword():
+		return str(ItemDatabase.get_runeword(runeword_id).get("name", base_name))
 
 	if quality == QUALITY_RARE and not rare_name.is_empty():
 		return rare_name
@@ -175,10 +209,13 @@ func get_quality_color() -> Color:
 	return COLOR_NORMAL
 
 
-# 顯示物品時用的顏色（名稱文字、背包裡的邊框）：符文橘色、有孔的普通物品灰色，其餘是品質顏色
+# 顯示物品時用的顏色（名稱文字、背包裡的邊框）：
+# 符文橘色、符文之語暗金色、有孔的普通物品灰色，其餘是品質顏色
 func get_display_color() -> Color:
 	if is_rune():
 		return COLOR_RUNE
+	if is_runeword():
+		return COLOR_RUNEWORD
 	if quality == QUALITY_NORMAL and sockets > 0:
 		return COLOR_SOCKETED
 	return get_quality_color()
@@ -191,6 +228,7 @@ func to_dict() -> Dictionary:
 		"quality": quality,
 		"sockets": sockets,
 		"socketed_runes": socketed_runes.duplicate(),
+		"runeword_id": runeword_id,
 		"affixes": affixes.duplicate(true),
 		"defense": defense,
 		"rare_name": rare_name,
@@ -202,6 +240,7 @@ static func from_dict(data: Dictionary) -> ItemInstance:
 	var item: ItemInstance = ItemInstance.new()
 	item.base_id = str(data.get("base_id", ""))
 	item.rune_id = str(data.get("rune_id", ""))
+	item.runeword_id = str(data.get("runeword_id", ""))
 	item.quality = str(data.get("quality", QUALITY_NORMAL))
 	item.sockets = int(data.get("sockets", 0))
 	item.defense = int(data.get("defense", 0))

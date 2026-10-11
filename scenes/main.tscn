@@ -1,57 +1,57 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene format=3 uid="uid://baqbfqlmgvged"]
 
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://c1nfxfig4fjlj" path="res://scenes/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/monster.tscn" id="2_monster"]
-[ext_resource type="Script" path="res://scripts/main.gd" id="3_main"]
-[ext_resource type="Script" path="res://scripts/monsters/monster_spawner.gd" id="4_spawner"]
+[ext_resource type="Script" uid="uid://dklcm6csj5mua" path="res://scripts/main.gd" id="3_main"]
+[ext_resource type="Script" uid="uid://cokp80kt5207y" path="res://scripts/monsters/monster_spawner.gd" id="4_spawner"]
 [ext_resource type="PackedScene" path="res://scenes/ui/stats_panel.tscn" id="5_stats_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_screen.tscn" id="6_inventory_screen"]
 [ext_resource type="PackedScene" path="res://scenes/ui/held_item.tscn" id="7_held_item"]
 [ext_resource type="PackedScene" path="res://scenes/ui/screen_message.tscn" id="8_screen_message"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=572713153]
 script = ExtResource("3_main")
 
-[node name="ReferenceMarkers" type="Node2D" parent="."]
+[node name="ReferenceMarkers" type="Node2D" parent="." unique_id=2039599887]
 
-[node name="Marker1" type="Polygon2D" parent="ReferenceMarkers"]
+[node name="Marker1" type="Polygon2D" parent="ReferenceMarkers" unique_id=33028301]
 position = Vector2(-200, -120)
 color = Color(0.4, 0.4, 0.4, 1)
 polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 
-[node name="Marker2" type="Polygon2D" parent="ReferenceMarkers"]
+[node name="Marker2" type="Polygon2D" parent="ReferenceMarkers" unique_id=40590031]
 position = Vector2(200, -120)
 color = Color(0.4, 0.4, 0.4, 1)
 polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 
-[node name="Marker3" type="Polygon2D" parent="ReferenceMarkers"]
+[node name="Marker3" type="Polygon2D" parent="ReferenceMarkers" unique_id=2093678655]
 position = Vector2(-200, 120)
 color = Color(0.4, 0.4, 0.4, 1)
 polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 
-[node name="Marker4" type="Polygon2D" parent="ReferenceMarkers"]
+[node name="Marker4" type="Polygon2D" parent="ReferenceMarkers" unique_id=1711466023]
 position = Vector2(200, 120)
 color = Color(0.4, 0.4, 0.4, 1)
 polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
 
-[node name="Player" parent="." instance=ExtResource("1_player")]
+[node name="Player" parent="." unique_id=420661044 instance=ExtResource("1_player")]
 
-[node name="MonsterSpawnerEast" type="Node2D" parent="."]
+[node name="MonsterSpawnerEast" type="Node2D" parent="." unique_id=1963771599]
 position = Vector2(550, 0)
 script = ExtResource("4_spawner")
 monster_scene = ExtResource("2_monster")
 
-[node name="MonsterSpawnerSouth" type="Node2D" parent="."]
+[node name="MonsterSpawnerSouth" type="Node2D" parent="." unique_id=1351698607]
 position = Vector2(0, 600)
 script = ExtResource("4_spawner")
 monster_scene = ExtResource("2_monster")
 
-[node name="PlayerSpawnPoint" type="Marker2D" parent="."]
+[node name="PlayerSpawnPoint" type="Marker2D" parent="." unique_id=1814777154]
 position = Vector2(-150, 0)
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=2052491421]
 
-[node name="DeathLabel" type="Label" parent="UI"]
+[node name="DeathLabel" type="Label" parent="UI" unique_id=1439959328]
 visible = false
 anchors_preset = 15
 anchor_right = 1.0
@@ -66,10 +66,10 @@ text = "你已死亡"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="StatsPanel" parent="." instance=ExtResource("5_stats_panel")]
+[node name="StatsPanel" parent="." unique_id=1932792203 instance=ExtResource("5_stats_panel")]
 
-[node name="InventoryScreen" parent="." instance=ExtResource("6_inventory_screen")]
+[node name="InventoryScreen" parent="." unique_id=529827940 instance=ExtResource("6_inventory_screen")]
 
-[node name="ScreenMessage" parent="." instance=ExtResource("8_screen_message")]
+[node name="ScreenMessage" parent="." unique_id=1504442649 instance=ExtResource("8_screen_message")]
 
-[node name="HeldItemLayer" parent="." instance=ExtResource("7_held_item")]
+[node name="HeldItemLayer" parent="." unique_id=98782008 instance=ExtResource("7_held_item")]

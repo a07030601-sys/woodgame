@@ -50,10 +50,12 @@ func show_item(item: ItemInstance) -> void:
 # 第一行是名稱（顏色見 ItemInstance.get_display_color()），稀有物品第二行是底材名，
 # 接著是底材的傷害或防禦，有孔的物品顯示「插槽 (已插入/孔數)」與已插入的符文名稱，
 # 再來是每條詞綴與符文的修正值。
-# 符文的內容不同，見 _build_rune_lines()。
+# 符文與符文之語的內容不同，見 _build_rune_lines() 與 _build_runeword_lines()。
 static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 	if item.is_rune():
 		return _build_rune_lines(item)
+	if item.is_runeword():
+		return _build_runeword_lines(item)
 
 	var lines: Array[Dictionary] = []
 	lines.append({"text": item.get_display_name(), "color": item.get_display_color()})
@@ -79,6 +81,30 @@ static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 
 	# 符文提供的修正值接在詞綴後面，同一個列表一起顯示
 	for modifier: Dictionary in item.get_affix_modifiers() + item.get_rune_modifiers():
+		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
+	return lines
+
+
+# 符文之語的說明：名稱（暗金色）、底材名、以「'符文A 符文B'」列出的符文順序、底材的傷害或防禦，
+# 再來是所有修正值（符文各自的效果，接著是符文之語的效果）。
+static func _build_runeword_lines(item: ItemInstance) -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	lines.append({"text": item.get_display_name(), "color": item.get_display_color()})
+	lines.append({"text": item.get_base_name(), "color": BASE_NAME_COLOR})
+
+	var rune_names: Array[String] = []
+	for rune_id: String in item.socketed_runes:
+		rune_names.append(str(ItemDatabase.get_rune(rune_id).get("name", rune_id)))
+	lines.append({"text": "'%s'" % " ".join(rune_names), "color": ItemInstance.COLOR_RUNE})
+
+	var base: Dictionary = ItemDatabase.get_base(item.base_id)
+	if base.has("damage"):
+		var damage: Array = base["damage"]
+		lines.append({"text": "傷害：%d–%d" % [int(damage[0]), int(damage[1])], "color": BASE_STAT_COLOR})
+	if base.has("defense"):
+		lines.append({"text": "防禦：%d" % item.defense, "color": BASE_STAT_COLOR})
+
+	for modifier: Dictionary in item.get_rune_modifiers() + item.get_runeword_modifiers():
 		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
 	return lines
 

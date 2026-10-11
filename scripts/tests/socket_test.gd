@@ -127,13 +127,14 @@ func _test_modifiers() -> void:
 	var axe: ItemInstance = _socketed("hand_axe", 2)
 	var before: Array[Dictionary] = axe.get_modifiers()
 	check("還沒插符文時沒有符文的修正值", axe.get_rune_modifiers().is_empty())
-	axe.insert_rune(ItemDatabase.create_rune("flint"))
+	# 鋒紋：最小、最大傷害各 +1；燧紋：+2 最大傷害。
+	# 順序刻意和符文之語「裂曉」（燧紋、鋒紋）相反，這裡只看符文本身的效果。
 	axe.insert_rune(ItemDatabase.create_rune("edge"))
-	# 燧紋：+2 最大傷害；鋒紋：最小、最大傷害各 +1
+	axe.insert_rune(ItemDatabase.create_rune("flint"))
 	var expected: Array[Dictionary] = before.duplicate()
-	expected.append({"stat": "damage_max", "value": 2.0, "type": "flat"})
 	expected.append({"stat": "damage_min", "value": 1.0, "type": "flat"})
 	expected.append({"stat": "damage_max", "value": 1.0, "type": "flat"})
+	expected.append({"stat": "damage_max", "value": 2.0, "type": "flat"})
 	check(
 		"get_modifiers 是底材的修正值再加上每顆符文的效果",
 		axe.get_modifiers() == expected,

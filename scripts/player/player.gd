@@ -13,6 +13,8 @@ signal inventory_full
 @export var starting_equipment: Array[String] = ["short_sword"]
 # 除錯用：開場時在背包放幾件隨機的魔法與稀有裝備
 @export var debug_start_items: bool = false
+# 除錯用：開場時在背包放入能湊出每一組符文之語的底材（孔數剛好）和需要的符文
+@export var debug_runeword_kit: bool = false
 
 # 與目標的距離小於此值就視為抵達，避免在目標點來回抖動
 const ARRIVE_DISTANCE: float = 4.0
@@ -69,6 +71,8 @@ func _ready() -> void:
 
 	if debug_start_items:
 		_add_debug_start_items()
+	if debug_runeword_kit:
+		_add_debug_runeword_kit()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -317,6 +321,25 @@ func _add_debug_start_items() -> void:
 		)
 		# 極少數組合會放不下（例如連續好幾件皮甲），放不下的那件直接略過
 		_inventory.add_item_auto(ItemGenerator.generate(base_id, quality, rng))
+
+
+# 除錯用：每一組符文之語各放一件孔數剛好的底材，以及依配方順序排好的符文
+func _add_debug_runeword_kit() -> void:
+	for runeword_id: String in ItemDatabase.get_runeword_ids():
+		var runeword: Dictionary = ItemDatabase.get_runeword(runeword_id)
+		var runes: Array = runeword["runes"]
+
+		# 找第一個類型符合、孔數放得下這組配方的底材
+		for base_id: String in ItemDatabase.get_base_ids():
+			var base: Dictionary = ItemDatabase.get_base(base_id)
+			if runeword["allowed_bases"].has(base["type"]) and int(base["max_sockets"]) >= runes.size():
+				var item: ItemInstance = ItemDatabase.create_item(base_id)
+				item.sockets = runes.size()
+				_inventory.add_item_auto(item)
+				break
+
+		for rune_id: String in runes:
+			_inventory.add_item_auto(ItemDatabase.create_rune(rune_id))
 
 
 # 欄位有物品就把它的修正值交給屬性元件，空了就移除。同一個來源名稱會直接覆蓋，換裝不會殘留舊數值。

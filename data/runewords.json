@@ -1,0 +1,34 @@
+[
+	{
+		"id": "dawnrend",
+		"name": "裂曉",
+		"runes": ["flint", "edge"],
+		"allowed_bases": ["sword", "axe"],
+		"modifiers": [
+			{"stat": "damage_min", "value": 2, "type": "flat"},
+			{"stat": "damage_max", "value": 4, "type": "flat"},
+			{"stat": "attack_speed", "value": 10, "type": "percent"}
+		]
+	},
+	{
+		"id": "stillspring",
+		"name": "靜泉",
+		"runes": ["spring", "crag"],
+		"allowed_bases": ["helm"],
+		"modifiers": [
+			{"stat": "life", "value": 20, "type": "flat"},
+			{"stat": "defense", "value": 5, "type": "flat"}
+		]
+	},
+	{
+		"id": "bedrock",
+		"name": "磐嶽",
+		"runes": ["crag", "flint", "ruin"],
+		"allowed_bases": ["armor"],
+		"modifiers": [
+			{"stat": "defense", "value": 30, "type": "percent"},
+			{"stat": "life", "value": 10, "type": "percent"},
+			{"stat": "strength", "value": 3, "type": "flat"}
+		]
+	}
+]

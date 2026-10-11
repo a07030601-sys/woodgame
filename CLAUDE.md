@@ -31,17 +31,19 @@
   - `modifiers`：每筆包含 `stat`、`type`（`flat` 或 `percent`）、`min`、`max`；`stat` 必須在 `StatSystem.STAT_NAMES` 內
 - `data/rare_names.json`：`first_words` 是共用的字詞陣列；`second_words` 是「底材 `type` -> 字詞陣列」，每種底材 `type` 都要有一組。
 - `data/runes.json`：符文清單（陣列）。每筆的欄位：`id`、`name`、`weapon_mods`、`armor_mods`。後兩者是符文插在武器、防具上各自提供的修正值，格式就是「屬性計算」的修正值（`stat`、`value`、`type`，數值固定不擲骰）。
+- `data/runewords.json`：符文之語清單（陣列）。每筆的欄位：`id`、`name`、`runes`（符文 id，有順序）、`allowed_bases`（可用的底材 `type`）、`modifiers`（修正值，格式與符文相同）。只能用 `runes.json` 裡的符文和 `bases.json` 裡的底材類型。
 - `data/item_settings.json`：物品生成的設定。`socket_chance` 是普通品質的物品生成時有孔的機率（百分比）。
-- `ItemDatabase`（Autoload）啟動時讀取並檢查以上資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)`、`get_affix(id)`、`get_rune(id)` 查資料，用 `create_item(base_id)` 建立普通物品（沒有孔），用 `create_rune(rune_id)` 建立符文物品。
-- `ItemInstance`（`scripts/items/item_instance.gd`，`RefCounted`）代表一件實際的物品，欄位：`base_id`、`rune_id`、`quality`、`sockets`（孔數）、`socketed_runes`（已插入的符文 id）、`affixes`、`defense`（生成時擲出的防禦值）、`rare_name`（稀有物品的名稱）。
+- `ItemDatabase`（Autoload）啟動時讀取並檢查以上資料，有問題的那筆會 `push_warning` 並略過。用 `get_base(id)`、`get_affix(id)`、`get_rune(id)`、`get_runeword(id)` 查資料，用 `create_item(base_id)` 建立普通物品（沒有孔），用 `create_rune(rune_id)` 建立符文物品。
+- `ItemInstance`（`scripts/items/item_instance.gd`，`RefCounted`）代表一件實際的物品，欄位：`base_id`、`rune_id`、`quality`、`sockets`（孔數）、`socketed_runes`（已插入的符文 id）、`runeword_id`（符文之語 id）、`affixes`、`defense`（生成時擲出的防禦值）、`rare_name`（稀有物品的名稱）。
   - 符文也是 `ItemInstance`：`rune_id` 有值、`base_id` 是空的（`is_rune()`），佔 1 × 1 格，沒有裝備欄位，本身不提供修正值。背包、手上的物品、地上物品都走同一套流程，不另外做一套。
   - 底材與詞綴的固定資料不複製進物品，需要時用 id 查 `ItemDatabase`。
   - `affixes` 的每一項是 `{"id": 詞綴 id, "modifiers": [已擲好數值的修正值]}`。
   - 鑲嵌：`can_insert_rune(rune_item)` 在物品還有空孔且對方是符文時為 true；`insert_rune(rune_item)` 把符文 id 加到 `socketed_runes` 的最後並回傳是否成功。符文插入後不能取出。
   - 已插入的符文提供的修正值用 `get_rune_modifiers()` 取得：底材 `slot` 是 `weapon` 時用符文的 `weapon_mods`，其他都用 `armor_mods`。
-  - `get_modifiers()` 回傳物品的所有修正值（底材、詞綴、已插入的符文）；`to_dict()` / `ItemInstance.from_dict()` 用於存檔與還原。
+  - 符文之語：孔全部插滿的那一下，`insert_rune()` 會用 `RunewordMatcher.find_match()`（`scripts/items/runeword_matcher.gd`）比對一次，成功就記下 `runeword_id`（`is_runeword()`）。全部符合才成功：物品是普通品質、孔數等於配方的符文數量、符文順序完全一致、底材 `type` 在 `allowed_bases` 裡。符文之語的修正值用 `get_runeword_modifiers()` 取得，與符文各自的效果疊加。
+  - `get_modifiers()` 回傳物品的所有修正值（底材、詞綴、已插入的符文、符文之語）；`to_dict()` / `ItemInstance.from_dict()` 用於存檔與還原。
   - `get_display_name()` 依下方命名規則組出名稱；`get_base_name()` 回傳底材名（符文回傳符文名）。`get_quality_color()`：普通白、魔法藍、稀有黃。
-  - 介面上顯示物品（名稱文字、背包裡的邊框）一律用 `get_display_color()`：符文橘色、有孔的普通物品灰色，其餘是品質顏色。
+  - 介面上顯示物品（名稱文字、背包裡的邊框）一律用 `get_display_color()`：符文橘色、符文之語暗金色、有孔的普通物品灰色，其餘是品質顏色。符文之語的 `get_display_name()` 是符文之語的名稱，不含底材名。
 - `ItemGenerator.generate(base_id, quality, rng)`（`scripts/items/item_generator.gd`）依品質生成物品，所有隨機都來自傳入的 `rng`：
   - `normal`：沒有詞綴。依 `socket_chance` 決定有沒有孔，有孔時孔數在 1 到底材 `max_sockets` 之間。
   - `magic`：最多 1 個前綴加 1 個後綴，至少 1 個。一律 0 孔。
@@ -63,13 +65,14 @@
   - 變動時發出 `equipment_changed(slot)`；`to_dict()` / `Equipment.from_dict()` 用於存檔與還原。
 - 玩家擁有一個 `Equipment`（`Player.get_equipment()`）。裝備變動時，該欄位有物品就對屬性元件 `add_source("equip_" + 欄位名, 物品的 get_modifiers())`，空了就 `remove_source`。
 - 玩家空手的基礎傷害是 1～2，武器的傷害以 flat 修正值加在上面。`Player.starting_equipment`（底材 id 清單）決定開場自動穿上的普通裝備，預設是一把短劍。
+- 除錯用的開關（預設都關閉）：`Player.debug_start_items` 開場在背包放幾件隨機的魔法與稀有裝備；`Player.debug_runeword_kit` 開場在背包放入能湊出每一組符文之語的底材（孔數剛好）和需要的符文。
 
 ## 背包介面
 
 - 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
 - `scenes/ui/inventory_screen.tscn`（`InventoryScreen`）由幾個獨立的部分組成，腳本都在 `scripts/ui/`：
   - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
-  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」，接著列出已插入的符文名稱，符文的修正值接在詞綴修正值後面一起顯示；符文分成「武器：」與「防具：」兩段，各自列出修正值。
+  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」，接著列出已插入的符文名稱，符文的修正值接在詞綴修正值後面一起顯示；符文分成「武器：」與「防具：」兩段，各自列出修正值；符文之語依序顯示名稱、底材名、「'符文A 符文B'」、底材的傷害或防禦、所有修正值。
   - `EquipmentPanel`：面板上方的 5 個裝備欄，排列參考暗黑 2（頭盔在上方中間，身體護甲在中間，武器在左側，手套在左下，靴子在右下）。欄位位置定義在 `EquipmentPanel.SLOT_RECTS`。
   - 格子和裝備欄的預覽狀態都要「自己記住是為哪件物品算的」，並在資料一變動時立刻重算，不能等到 `_draw` 才去讀手上的物品。
 - `HeldItem`（`scenes/ui/held_item.tscn`）是「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包，也不屬於背包畫面：放在自己的 `CanvasLayer`（layer 100），永遠畫在最上層。背包格子、裝備欄和丟到地上都共用這一個，用群組 `HeldItem.GROUP` 找到它，用 `hold()` / `take()` 存取。
