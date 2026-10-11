@@ -1,0 +1,28 @@
+[
+	{
+		"id": "mistwood",
+		"name": "霧林獵裝",
+		"items": ["mistwood_hood", "mistwood_jerkin", "mistwood_grips"],
+		"bonuses": {
+			"2": [
+				{"stat": "life", "value": 15, "type": "flat"}
+			],
+			"3": [
+				{"stat": "defense", "value": 25, "type": "percent"},
+				{"stat": "move_speed", "value": 5, "type": "percent"}
+			]
+		}
+	},
+	{
+		"id": "starchase",
+		"name": "逐星行裝",
+		"items": ["starchase_blade", "starchase_treads"],
+		"bonuses": {
+			"2": [
+				{"stat": "damage_min", "value": 10, "type": "percent"},
+				{"stat": "damage_max", "value": 10, "type": "percent"},
+				{"stat": "move_speed", "value": 5, "type": "percent"}
+			]
+		}
+	}
+]

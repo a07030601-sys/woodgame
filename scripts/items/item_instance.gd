@@ -8,11 +8,13 @@ extends RefCounted
 const QUALITY_NORMAL: String = "normal"
 const QUALITY_MAGIC: String = "magic"
 const QUALITY_RARE: String = "rare"
-const QUALITIES: Array[String] = [QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE]
+const QUALITY_SET: String = "set"
+const QUALITIES: Array[String] = [QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE, QUALITY_SET]
 
 const COLOR_NORMAL: Color = Color(1.0, 1.0, 1.0, 1.0)
 const COLOR_MAGIC: Color = Color(0.45, 0.55, 1.0, 1.0)
 const COLOR_RARE: Color = Color(1.0, 0.95, 0.35, 1.0)
+const COLOR_SET: Color = Color(0.3, 0.9, 0.3, 1.0)
 # 有孔的普通物品
 const COLOR_SOCKETED: Color = Color(0.6, 0.6, 0.6, 1.0)
 const COLOR_RUNE: Color = Color(1.0, 0.6, 0.15, 1.0)
@@ -31,6 +33,8 @@ var sockets: int = 0
 var socketed_runes: Array[String] = []
 # 孔全部插滿且符合配方時記下的符文之語 id，不是符文之語時為空字串
 var runeword_id: String = ""
+# 套裝品質的物品是哪一件套裝物品（data/set_items.json 的 id），其他品質為空字串
+var set_item_id: String = ""
 # 每個詞綴是 {"id": 詞綴 id, "modifiers": [已擲好數值的修正值, ...]}，修正值格式見 StatSystem
 var affixes: Array = []
 # 生成時擲出的防禦值，武器為 0
@@ -67,7 +71,27 @@ func is_runeword() -> bool:
 	return not runeword_id.is_empty()
 
 
-# 回傳這件物品提供的所有修正值，格式見 StatSystem：底材、詞綴、已插入的符文，再加上符文之語。
+func is_set_item() -> bool:
+	return not set_item_id.is_empty()
+
+
+# 這件套裝物品所屬套裝的 id，不是套裝物品時回傳空字串
+func get_set_id() -> String:
+	if not is_set_item():
+		return ""
+	return str(ItemDatabase.get_set_item(set_item_id).get("set_id", ""))
+
+
+# 所屬套裝的名稱，不是套裝物品時回傳空字串
+func get_set_name() -> String:
+	var set_id: String = get_set_id()
+	if set_id.is_empty():
+		return ""
+	return str(ItemDatabase.get_set(set_id).get("name", set_id))
+
+
+# 回傳這件物品提供的所有修正值，格式見 StatSystem：
+# 底材、詞綴、已插入的符文、符文之語，再加上套裝物品本身固定的修正值（不含套裝的件數加成）。
 # 符文各自的效果與符文之語的效果是疊加的。
 # 符文本身不提供任何修正值，要插進裝備才有效果。
 func get_modifiers() -> Array[Dictionary]:
@@ -86,6 +110,25 @@ func get_modifiers() -> Array[Dictionary]:
 	modifiers.append_array(get_affix_modifiers())
 	modifiers.append_array(get_rune_modifiers())
 	modifiers.append_array(get_runeword_modifiers())
+	modifiers.append_array(get_set_item_modifiers())
+	return modifiers
+
+
+# 只回傳套裝物品本身固定的修正值，不是套裝物品時回傳空陣列。套裝的件數加成不在這裡。
+func get_set_item_modifiers() -> Array[Dictionary]:
+	var modifiers: Array[Dictionary] = []
+	if not is_set_item():
+		return modifiers
+
+	var set_item: Dictionary = ItemDatabase.get_set_item(set_item_id)
+	for modifier: Variant in set_item.get("modifiers", []):
+		if typeof(modifier) == TYPE_DICTIONARY:
+			# JSON 讀進來的 value 可能是整數，統一轉成 float
+			modifiers.append({
+				"stat": modifier["stat"],
+				"value": float(modifier["value"]),
+				"type": modifier["type"],
+			})
 	return modifiers
 
 
@@ -173,13 +216,15 @@ func get_base_name() -> String:
 
 # 普通：底材名。魔法：後綴 + 前綴 + 底材名，底材名一律在最後。
 # 稀有：生成時擲出的名稱，不含底材名，要顯示底材請另外用 get_base_name()。
-# 符文之語：符文之語的名稱，同樣不含底材名。
+# 符文之語：符文之語的名稱，同樣不含底材名。套裝：該件套裝物品的名稱。
 func get_display_name() -> String:
 	var base_name: String = get_base_name()
 	if is_rune():
 		return base_name
 	if is_runeword():
 		return str(ItemDatabase.get_runeword(runeword_id).get("name", base_name))
+	if is_set_item():
+		return str(ItemDatabase.get_set_item(set_item_id).get("name", base_name))
 
 	if quality == QUALITY_RARE and not rare_name.is_empty():
 		return rare_name
@@ -206,6 +251,8 @@ func get_quality_color() -> Color:
 		return COLOR_MAGIC
 	if quality == QUALITY_RARE:
 		return COLOR_RARE
+	if quality == QUALITY_SET:
+		return COLOR_SET
 	return COLOR_NORMAL
 
 
@@ -229,6 +276,7 @@ func to_dict() -> Dictionary:
 		"sockets": sockets,
 		"socketed_runes": socketed_runes.duplicate(),
 		"runeword_id": runeword_id,
+		"set_item_id": set_item_id,
 		"affixes": affixes.duplicate(true),
 		"defense": defense,
 		"rare_name": rare_name,
@@ -241,6 +289,7 @@ static func from_dict(data: Dictionary) -> ItemInstance:
 	item.base_id = str(data.get("base_id", ""))
 	item.rune_id = str(data.get("rune_id", ""))
 	item.runeword_id = str(data.get("runeword_id", ""))
+	item.set_item_id = str(data.get("set_item_id", ""))
 	item.quality = str(data.get("quality", QUALITY_NORMAL))
 	item.sockets = int(data.get("sockets", 0))
 	item.defense = int(data.get("defense", 0))

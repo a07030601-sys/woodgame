@@ -15,6 +15,8 @@ signal inventory_full
 @export var debug_start_items: bool = false
 # 除錯用：開場時在背包放入能湊出每一組符文之語的底材（孔數剛好）和需要的符文
 @export var debug_runeword_kit: bool = false
+# 除錯用：開場時在背包放入每一套套裝的全部套裝物品
+@export var debug_set_kit: bool = false
 
 # 與目標的距離小於此值就視為抵達，避免在目標點來回抖動
 const ARRIVE_DISTANCE: float = 4.0
@@ -73,6 +75,8 @@ func _ready() -> void:
 		_add_debug_start_items()
 	if debug_runeword_kit:
 		_add_debug_runeword_kit()
+	if debug_set_kit:
+		_add_debug_set_kit()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -340,6 +344,15 @@ func _add_debug_runeword_kit() -> void:
 
 		for rune_id: String in runes:
 			_inventory.add_item_auto(ItemDatabase.create_rune(rune_id))
+
+
+# 除錯用：每一套套裝的每一件各放一件
+func _add_debug_set_kit() -> void:
+	for set_id: String in ItemDatabase.get_set_ids():
+		for set_item_id: String in ItemDatabase.get_set(set_id)["items"]:
+			var item: ItemInstance = ItemDatabase.create_set_item(set_item_id)
+			if item != null:
+				_inventory.add_item_auto(item)
 
 
 # 欄位有物品就把它的修正值交給屬性元件，空了就移除。同一個來源名稱會直接覆蓋，換裝不會殘留舊數值。

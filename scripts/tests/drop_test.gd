@@ -49,6 +49,7 @@ func _test_default_table() -> void:
 		and is_equal_approx(float(weights.get("normal", -1.0)), 60.0)
 		and is_equal_approx(float(weights.get("magic", -1.0)), 30.0)
 		and is_equal_approx(float(weights.get("rare", -1.0)), 10.0)
+		and is_equal_approx(float(weights.get("set", -1.0)), 4.0)
 		and is_equal_approx(float(table.get("rune_weight", -1.0)), 5.0),
 		str(table)
 	)
@@ -89,6 +90,11 @@ func _test_drop_chance() -> void:
 		str(counts)
 	)
 	check(
+		"default 表會掉套裝物品，數量比稀有少",
+		counts["set"] > 0 and counts["set"] < counts["rare"],
+		str(counts)
+	)
+	check(
 		"default 表會掉符文，數量比稀有少",
 		counts["rune"] > 0 and counts["rune"] < counts["rare"],
 		str(counts)
@@ -122,6 +128,10 @@ func _test_zero_weight() -> void:
 	check("沒列出權重的品質不會出現", counts["normal"] == ROLL_COUNT, str(counts))
 
 	check("沒有 rune_weight 的掉落表不會掉符文", counts["rune"] == 0, str(counts))
+	check("沒列出 set 權重的掉落表不會掉套裝物品", counts["set"] == 0, str(counts))
+
+	counts = _count_qualities({"drop_chance": 100, "quality_weights": {"set": 1}}, rng)
+	check("只有 set 有權重時全部都是套裝物品", counts["set"] == ROLL_COUNT, str(counts))
 
 	counts = _count_qualities(
 		{"drop_chance": 100, "quality_weights": {"normal": 60, "magic": 30, "rare": 10}, "rune_weight": 0},
@@ -414,7 +424,7 @@ func _roll_many(seed_value: int) -> Array[Dictionary]:
 
 # 用 table 擲 ROLL_COUNT 次，回傳每種品質出現的次數，符文算在 "rune"，沒掉落算在 "none"
 func _count_qualities(table: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
-	var counts: Dictionary = {"none": 0, "normal": 0, "magic": 0, "rare": 0, "rune": 0}
+	var counts: Dictionary = {"none": 0, "normal": 0, "magic": 0, "rare": 0, "set": 0, "rune": 0}
 	for i: int in ROLL_COUNT:
 		var item: ItemInstance = DropRoller.roll_table(table, rng)
 		if item == null:

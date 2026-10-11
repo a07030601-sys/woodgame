@@ -4,7 +4,8 @@
 		"quality_weights": {
 			"normal": 60,
 			"magic": 30,
-			"rare": 10
+			"rare": 10,
+			"set": 4
 		},
 		"rune_weight": 5
 	}

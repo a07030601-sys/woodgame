@@ -47,9 +47,9 @@ func show_item(item: ItemInstance) -> void:
 
 
 # 說明框的每一行：{"text": String, "color": Color}。
-# 第一行是名稱（顏色見 ItemInstance.get_display_color()），稀有物品第二行是底材名，
+# 第一行是名稱（顏色見 ItemInstance.get_display_color()），稀有與套裝物品第二行是底材名，
 # 接著是底材的傷害或防禦，有孔的物品顯示「插槽 (已插入/孔數)」與已插入的符文名稱，
-# 再來是每條詞綴與符文的修正值。
+# 再來是每條詞綴、符文與套裝物品的修正值，套裝物品最後一行是綠色的套裝名稱。
 # 符文與符文之語的內容不同，見 _build_rune_lines() 與 _build_runeword_lines()。
 static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 	if item.is_rune():
@@ -59,7 +59,7 @@ static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 
 	var lines: Array[Dictionary] = []
 	lines.append({"text": item.get_display_name(), "color": item.get_display_color()})
-	if item.quality == ItemInstance.QUALITY_RARE:
+	if item.quality == ItemInstance.QUALITY_RARE or item.is_set_item():
 		lines.append({"text": item.get_base_name(), "color": BASE_NAME_COLOR})
 
 	var base: Dictionary = ItemDatabase.get_base(item.base_id)
@@ -79,9 +79,15 @@ static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 				"color": ItemInstance.COLOR_RUNE,
 			})
 
-	# 符文提供的修正值接在詞綴後面，同一個列表一起顯示
-	for modifier: Dictionary in item.get_affix_modifiers() + item.get_rune_modifiers():
+	# 符文與套裝物品提供的修正值接在詞綴後面，同一個列表一起顯示
+	for modifier: Dictionary in (
+		item.get_affix_modifiers() + item.get_rune_modifiers() + item.get_set_item_modifiers()
+	):
 		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
+
+	# 套裝物品的最後一行是所屬套裝的名稱
+	if item.is_set_item():
+		lines.append({"text": item.get_set_name(), "color": ItemInstance.COLOR_SET})
 	return lines
 
 

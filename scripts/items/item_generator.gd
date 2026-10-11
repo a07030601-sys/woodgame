@@ -9,7 +9,8 @@ const RARE_MAX_AFFIXES: int = 4
 const RARE_MAX_PER_AFFIX_TYPE: int = 2
 
 
-# 找不到底材時回傳 null；quality 不認得時警告並當成普通品質
+# 找不到底材時回傳 null；quality 不認得時警告並當成普通品質。
+# 套裝品質不在這裡生成：套裝物品是固定的，請用 ItemDatabase.create_set_item()。
 static func generate(base_id: String, quality: String, rng: RandomNumberGenerator) -> ItemInstance:
 	if rng == null:
 		rng = RandomNumberGenerator.new()

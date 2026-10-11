@@ -9,6 +9,8 @@ const DROP_TABLES_PATH: String = "res://data/drop_tables.json"
 const RUNES_PATH: String = "res://data/runes.json"
 const ITEM_SETTINGS_PATH: String = "res://data/item_settings.json"
 const RUNEWORDS_PATH: String = "res://data/runewords.json"
+const SETS_PATH: String = "res://data/sets.json"
+const SET_ITEMS_PATH: String = "res://data/set_items.json"
 
 const SLOT_WEAPON: String = "weapon"
 const VALID_SLOTS: Array[String] = ["weapon", "helm", "armor", "gloves", "boots"]
@@ -30,6 +32,9 @@ const REQUIRED_RUNE_MODIFIER_FIELDS: Array[String] = ["stat", "value", "type"]
 
 const REQUIRED_RUNEWORD_FIELDS: Array[String] = ["id", "name", "runes", "allowed_bases", "modifiers"]
 
+const REQUIRED_SET_FIELDS: Array[String] = ["id", "name", "items", "bonuses"]
+const REQUIRED_SET_ITEM_FIELDS: Array[String] = ["id", "name", "base", "set_id", "modifiers"]
+
 # 底材 id -> 底材資料
 var _bases: Dictionary = {}
 # 詞綴 id -> 詞綴資料
@@ -46,6 +51,10 @@ var _runes: Dictionary = {}
 var _socket_chance: float = 0.0
 # 符文之語 id -> 符文之語資料
 var _runewords: Dictionary = {}
+# 套裝 id -> 套裝資料
+var _sets: Dictionary = {}
+# 套裝物品 id -> 套裝物品資料
+var _set_items: Dictionary = {}
 
 
 func _ready() -> void:
@@ -54,6 +63,7 @@ func _ready() -> void:
 	_load_rare_names()
 	_load_runes()
 	_load_runewords()
+	_load_sets()
 	_load_drop_tables()
 	_load_item_settings()
 
@@ -172,6 +182,71 @@ func get_runeword_ids() -> Array[String]:
 	var ids: Array[String] = []
 	ids.assign(_runewords.keys())
 	return ids
+
+
+# 套裝：{"id", "name", "items": 套裝物品 id 清單, "bonuses": {件數（文字）: 修正值清單}}。
+# 找不到時警告並回傳空的 Dictionary
+func get_set(id: String) -> Dictionary:
+	if not _sets.has(id):
+		push_warning("ItemDatabase：找不到套裝 %s" % id)
+		return {}
+	return _sets[id]
+
+
+func has_set(id: String) -> bool:
+	return _sets.has(id)
+
+
+func get_set_count() -> int:
+	return _sets.size()
+
+
+# 所有套裝的 id，順序與 sets.json 相同
+func get_set_ids() -> Array[String]:
+	var ids: Array[String] = []
+	ids.assign(_sets.keys())
+	return ids
+
+
+# 套裝物品：{"id", "name", "base": 底材 id, "set_id", "modifiers": 固定的修正值}。
+# 找不到時警告並回傳空的 Dictionary
+func get_set_item(id: String) -> Dictionary:
+	if not _set_items.has(id):
+		push_warning("ItemDatabase：找不到套裝物品 %s" % id)
+		return {}
+	return _set_items[id]
+
+
+func has_set_item(id: String) -> bool:
+	return _set_items.has(id)
+
+
+func get_set_item_count() -> int:
+	return _set_items.size()
+
+
+# 所有套裝物品的 id，順序與 set_items.json 相同
+func get_set_item_ids() -> Array[String]:
+	var ids: Array[String] = []
+	ids.assign(_set_items.keys())
+	return ids
+
+
+# 建立套裝物品，找不到時回傳 null。
+# 套裝物品沒有任何隨機：沒有詞綴、沒有孔，防禦值固定取底材的最大值，同一件每次建立的內容都相同。
+func create_set_item(set_item_id: String) -> ItemInstance:
+	var set_item: Dictionary = get_set_item(set_item_id)
+	if set_item.is_empty():
+		return null
+
+	var base: Dictionary = get_base(set_item["base"])
+	var item: ItemInstance = ItemInstance.new()
+	item.base_id = set_item["base"]
+	item.quality = ItemInstance.QUALITY_SET
+	item.set_item_id = set_item_id
+	if base.has("defense"):
+		item.defense = int(base["defense"][1])
+	return item
 
 
 # 普通品質的物品生成時有孔的機率，以百分比表示（50 代表 50%）
@@ -295,6 +370,37 @@ func _load_runewords() -> void:
 	for entry: Variant in data:
 		if _is_valid_runeword(entry):
 			_runewords[entry["id"]] = entry
+
+
+# 套裝與套裝物品互相參照：先讀套裝，再讀套裝物品（檢查 base 與 set_id），最後回頭檢查套裝的 items
+func _load_sets() -> void:
+	_sets.clear()
+	_set_items.clear()
+
+	var sets_data: Variant = _load_json(SETS_PATH, TYPE_ARRAY)
+	if sets_data != null:
+		for entry: Variant in sets_data:
+			if _is_valid_set(entry):
+				_sets[entry["id"]] = entry
+
+	var set_items_data: Variant = _load_json(SET_ITEMS_PATH, TYPE_ARRAY)
+	if set_items_data != null:
+		for entry: Variant in set_items_data:
+			if _is_valid_set_item(entry):
+				_set_items[entry["id"]] = entry
+
+	for set_id: String in _sets:
+		for set_item_id: Variant in _sets[set_id]["items"]:
+			if not _set_items.has(set_item_id):
+				push_error(
+					"ItemDatabase：套裝 %s 的 items 裡的 %s 不在 %s 裡"
+					% [set_id, str(set_item_id), SET_ITEMS_PATH]
+				)
+			elif _set_items[set_item_id]["set_id"] != set_id:
+				push_error(
+					"ItemDatabase：套裝 %s 的 items 裡的 %s 屬於另一套 %s"
+					% [set_id, str(set_item_id), _set_items[set_item_id]["set_id"]]
+				)
 
 
 func _load_item_settings() -> void:
@@ -613,7 +719,107 @@ func _is_valid_runeword(entry: Variant) -> bool:
 	return true
 
 
-# 符文與符文之語的修正值是固定數值，格式與 StatSystem 的修正值相同。
+# 有問題的套裝只警告並略過。items 指到的套裝物品存不存在，等套裝物品讀完才在 _load_sets() 檢查。
+func _is_valid_set(entry: Variant) -> bool:
+	if typeof(entry) != TYPE_DICTIONARY:
+		push_warning("ItemDatabase：略過不是物件的套裝 %s" % str(entry))
+		return false
+
+	for field: String in REQUIRED_SET_FIELDS:
+		if not entry.has(field):
+			push_warning("ItemDatabase：略過缺少 %s 欄位的套裝 %s" % [field, str(entry)])
+			return false
+
+	var id: Variant = entry["id"]
+	if typeof(id) != TYPE_STRING or id == "":
+		push_warning("ItemDatabase：略過 id 不合法的套裝 %s" % str(entry))
+		return false
+	if _sets.has(id):
+		push_warning("ItemDatabase：略過 id 重複的套裝 %s" % id)
+		return false
+
+	if typeof(entry["name"]) != TYPE_STRING or entry["name"] == "":
+		push_warning("ItemDatabase：略過 name 不合法的套裝 %s" % id)
+		return false
+
+	var items: Variant = entry["items"]
+	if typeof(items) != TYPE_ARRAY or items.is_empty():
+		push_warning("ItemDatabase：略過 items 不是非空陣列的套裝 %s" % id)
+		return false
+	for set_item_id: Variant in items:
+		if typeof(set_item_id) != TYPE_STRING or set_item_id == "":
+			push_warning("ItemDatabase：略過 items 含有非文字項目的套裝 %s" % id)
+			return false
+
+	# bonuses 的鍵是件數（JSON 的鍵只能是文字），值是修正值清單
+	var bonuses: Variant = entry["bonuses"]
+	if typeof(bonuses) != TYPE_DICTIONARY:
+		push_warning("ItemDatabase：略過 bonuses 不是「件數 -> 修正值清單」的套裝 %s" % id)
+		return false
+	for piece_count: Variant in bonuses:
+		var count_text: String = str(piece_count)
+		if not count_text.is_valid_int() or int(count_text) < 1 or int(count_text) > items.size():
+			push_warning(
+				"ItemDatabase：略過套裝 %s，bonuses 的件數 %s 不在 1～%d 之間"
+				% [id, count_text, items.size()]
+			)
+			return false
+		var modifiers: Variant = bonuses[piece_count]
+		if typeof(modifiers) != TYPE_ARRAY or modifiers.is_empty():
+			push_warning("ItemDatabase：略過套裝 %s，%s 件的加成不是非空陣列" % [id, count_text])
+			return false
+		for modifier: Variant in modifiers:
+			if not _is_valid_fixed_modifier(modifier, "套裝 %s" % id):
+				return false
+
+	return true
+
+
+# 有問題的套裝物品會被略過。base 或 set_id 不存在時印出錯誤。
+func _is_valid_set_item(entry: Variant) -> bool:
+	if typeof(entry) != TYPE_DICTIONARY:
+		push_warning("ItemDatabase：略過不是物件的套裝物品 %s" % str(entry))
+		return false
+
+	for field: String in REQUIRED_SET_ITEM_FIELDS:
+		if not entry.has(field):
+			push_warning("ItemDatabase：略過缺少 %s 欄位的套裝物品 %s" % [field, str(entry)])
+			return false
+
+	var id: Variant = entry["id"]
+	if typeof(id) != TYPE_STRING or id == "":
+		push_warning("ItemDatabase：略過 id 不合法的套裝物品 %s" % str(entry))
+		return false
+	if _set_items.has(id):
+		push_warning("ItemDatabase：略過 id 重複的套裝物品 %s" % id)
+		return false
+
+	if typeof(entry["name"]) != TYPE_STRING or entry["name"] == "":
+		push_warning("ItemDatabase：略過 name 不合法的套裝物品 %s" % id)
+		return false
+
+	var base_id: Variant = entry["base"]
+	if typeof(base_id) != TYPE_STRING or not _bases.has(base_id):
+		push_error("ItemDatabase：套裝物品 %s 的 base %s 不在 %s 裡" % [id, str(base_id), BASES_PATH])
+		return false
+
+	var set_id: Variant = entry["set_id"]
+	if typeof(set_id) != TYPE_STRING or not _sets.has(set_id):
+		push_error("ItemDatabase：套裝物品 %s 的 set_id %s 不在 %s 裡" % [id, str(set_id), SETS_PATH])
+		return false
+
+	var modifiers: Variant = entry["modifiers"]
+	if typeof(modifiers) != TYPE_ARRAY or modifiers.is_empty():
+		push_warning("ItemDatabase：略過 modifiers 不是非空陣列的套裝物品 %s" % id)
+		return false
+	for modifier: Variant in modifiers:
+		if not _is_valid_fixed_modifier(modifier, "套裝物品 %s" % id):
+			return false
+
+	return true
+
+
+# 符文、符文之語、套裝的修正值是固定數值，格式與 StatSystem 的修正值相同。
 # owner_label 用在警告訊息裡，例如「符文 flint」。
 func _is_valid_fixed_modifier(modifier: Variant, owner_label: String) -> bool:
 	if typeof(modifier) != TYPE_DICTIONARY:

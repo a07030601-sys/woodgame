@@ -1,0 +1,53 @@
+[
+	{
+		"id": "mistwood_hood",
+		"name": "霧林兜帽",
+		"base": "leather_cap",
+		"set_id": "mistwood",
+		"modifiers": [
+			{"stat": "life", "value": 12, "type": "flat"},
+			{"stat": "defense", "value": 3, "type": "flat"}
+		]
+	},
+	{
+		"id": "mistwood_jerkin",
+		"name": "霧林獵衣",
+		"base": "leather_armor",
+		"set_id": "mistwood",
+		"modifiers": [
+			{"stat": "defense", "value": 20, "type": "percent"},
+			{"stat": "vitality", "value": 3, "type": "flat"}
+		]
+	},
+	{
+		"id": "mistwood_grips",
+		"name": "霧林護手",
+		"base": "leather_gloves",
+		"set_id": "mistwood",
+		"modifiers": [
+			{"stat": "attack_speed", "value": 8, "type": "percent"},
+			{"stat": "strength", "value": 2, "type": "flat"}
+		]
+	},
+	{
+		"id": "starchase_blade",
+		"name": "逐星之刃",
+		"base": "short_sword",
+		"set_id": "starchase",
+		"modifiers": [
+			{"stat": "damage_min", "value": 2, "type": "flat"},
+			{"stat": "damage_max", "value": 4, "type": "flat"},
+			{"stat": "attack_speed", "value": 6, "type": "percent"}
+		]
+	},
+	{
+		"id": "starchase_treads",
+		"name": "逐星之履",
+		"base": "leather_boots",
+		"set_id": "starchase",
+		"modifiers": [
+			{"stat": "move_speed", "value": 10, "type": "percent"},
+			{"stat": "defense", "value": 2, "type": "flat"}
+		]
+	}
+]

@@ -16,7 +16,8 @@ static func roll(table_id: String, rng: RandomNumberGenerator) -> ItemInstance:
 
 
 # 用傳入的掉落表擲一次：先擲掉落機率，掉落時再依權重決定是符文還是某個品質的裝備。
-# 符文從所有符文裡平均抽一顆，裝備的底材從所有底材裡平均抽一個。
+# 符文從所有符文裡平均抽一顆，套裝品質從所有套裝物品裡平均抽一件，
+# 其他品質的底材從所有底材裡平均抽一個。
 static func roll_table(table: Dictionary, rng: RandomNumberGenerator) -> ItemInstance:
 	var drop_chance: float = float(table.get("drop_chance", 0.0))
 	# randf() 的範圍包含 0 和 1，機率 0 要另外擋掉才會真的完全不掉
@@ -31,6 +32,8 @@ static func roll_table(table: Dictionary, rng: RandomNumberGenerator) -> ItemIns
 			return _roll_rune(rng)
 
 	var quality: String = pick_quality(quality_weights, rng)
+	if quality == ItemInstance.QUALITY_SET:
+		return _roll_set_item(rng)
 	var base_ids: Array[String] = ItemDatabase.get_base_ids()
 	if quality.is_empty() or base_ids.is_empty():
 		return null
@@ -66,6 +69,14 @@ static func _roll_rune(rng: RandomNumberGenerator) -> ItemInstance:
 	if rune_ids.is_empty():
 		return null
 	return ItemDatabase.create_rune(rune_ids[rng.randi_range(0, rune_ids.size() - 1)])
+
+
+# 從所有套裝物品裡平均抽一件，沒有任何套裝物品資料時回傳 null
+static func _roll_set_item(rng: RandomNumberGenerator) -> ItemInstance:
+	var set_item_ids: Array[String] = ItemDatabase.get_set_item_ids()
+	if set_item_ids.is_empty():
+		return null
+	return ItemDatabase.create_set_item(set_item_ids[rng.randi_range(0, set_item_ids.size() - 1)])
 
 
 static func _get_total_quality_weight(quality_weights: Dictionary) -> float:
