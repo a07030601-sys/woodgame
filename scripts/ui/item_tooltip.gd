@@ -48,7 +48,8 @@ func show_item(item: ItemInstance) -> void:
 
 # 說明框的每一行：{"text": String, "color": Color}。
 # 第一行是名稱（顏色見 ItemInstance.get_display_color()），稀有物品第二行是底材名，
-# 接著是底材的傷害或防禦，有孔的物品顯示「插槽 (已插入/孔數)」，再來是每條詞綴修正值。
+# 接著是底材的傷害或防禦，有孔的物品顯示「插槽 (已插入/孔數)」與已插入的符文名稱，
+# 再來是每條詞綴與符文的修正值。
 # 符文的內容不同，見 _build_rune_lines()。
 static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 	if item.is_rune():
@@ -70,8 +71,14 @@ static func build_lines(item: ItemInstance) -> Array[Dictionary]:
 			"text": "插槽 (%d/%d)" % [item.socketed_runes.size(), item.sockets],
 			"color": ItemInstance.COLOR_SOCKETED,
 		})
+		for rune_id: String in item.socketed_runes:
+			lines.append({
+				"text": str(ItemDatabase.get_rune(rune_id).get("name", rune_id)),
+				"color": ItemInstance.COLOR_RUNE,
+			})
 
-	for modifier: Dictionary in item.get_affix_modifiers():
+	# 符文提供的修正值接在詞綴後面，同一個列表一起顯示
+	for modifier: Dictionary in item.get_affix_modifiers() + item.get_rune_modifiers():
 		lines.append({"text": StatSystem.format_modifier(modifier), "color": AFFIX_COLOR})
 	return lines
 

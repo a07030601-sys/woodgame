@@ -37,7 +37,9 @@
   - 符文也是 `ItemInstance`：`rune_id` 有值、`base_id` 是空的（`is_rune()`），佔 1 × 1 格，沒有裝備欄位，本身不提供修正值。背包、手上的物品、地上物品都走同一套流程，不另外做一套。
   - 底材與詞綴的固定資料不複製進物品，需要時用 id 查 `ItemDatabase`。
   - `affixes` 的每一項是 `{"id": 詞綴 id, "modifiers": [已擲好數值的修正值]}`。
-  - `get_modifiers()` 回傳物品的所有修正值；`to_dict()` / `ItemInstance.from_dict()` 用於存檔與還原。
+  - 鑲嵌：`can_insert_rune(rune_item)` 在物品還有空孔且對方是符文時為 true；`insert_rune(rune_item)` 把符文 id 加到 `socketed_runes` 的最後並回傳是否成功。符文插入後不能取出。
+  - 已插入的符文提供的修正值用 `get_rune_modifiers()` 取得：底材 `slot` 是 `weapon` 時用符文的 `weapon_mods`，其他都用 `armor_mods`。
+  - `get_modifiers()` 回傳物品的所有修正值（底材、詞綴、已插入的符文）；`to_dict()` / `ItemInstance.from_dict()` 用於存檔與還原。
   - `get_display_name()` 依下方命名規則組出名稱；`get_base_name()` 回傳底材名（符文回傳符文名）。`get_quality_color()`：普通白、魔法藍、稀有黃。
   - 介面上顯示物品（名稱文字、背包裡的邊框）一律用 `get_display_color()`：符文橘色、有孔的普通物品灰色，其餘是品質顏色。
 - `ItemGenerator.generate(base_id, quality, rng)`（`scripts/items/item_generator.gd`）依品質生成物品，所有隨機都來自傳入的 `rng`：
@@ -67,11 +69,12 @@
 - 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
 - `scenes/ui/inventory_screen.tscn`（`InventoryScreen`）由幾個獨立的部分組成，腳本都在 `scripts/ui/`：
   - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
-  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」；符文分成「武器：」與「防具：」兩段，各自列出修正值。
+  - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。有孔的物品顯示「插槽 (已插入/孔數)」，接著列出已插入的符文名稱，符文的修正值接在詞綴修正值後面一起顯示；符文分成「武器：」與「防具：」兩段，各自列出修正值。
   - `EquipmentPanel`：面板上方的 5 個裝備欄，排列參考暗黑 2（頭盔在上方中間，身體護甲在中間，武器在左側，手套在左下，靴子在右下）。欄位位置定義在 `EquipmentPanel.SLOT_RECTS`。
   - 格子和裝備欄的預覽狀態都要「自己記住是為哪件物品算的」，並在資料一變動時立刻重算，不能等到 `_draw` 才去讀手上的物品。
 - `HeldItem`（`scenes/ui/held_item.tscn`）是「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包，也不屬於背包畫面：放在自己的 `CanvasLayer`（layer 100），永遠畫在最上層。背包格子、裝備欄和丟到地上都共用這一個，用群組 `HeldItem.GROUP` 找到它，用 `hold()` / `take()` 存取。
 - 手上的物品以中心對準游標；放下時用 `InventoryGrid.get_drop_cell()` 換算左上角的格子。
+- 鑲嵌符文：手上拿著符文、點背包裡還有空孔的物品時插入，手上的符文消失（`InventoryGrid.get_insert_target_at()` 判斷）；預覽是蓋住整件目標物品的綠色加一圈外框。不能插入時照一般的放置或互換處理。只支援背包裡的物品，裝備欄上的物品不能插。
 - 關閉背包時手上的物品留在游標上，不會自動放回背包。
 - 手上有物品時點遊戲世界，會把物品丟在角色腳邊變成地上物品（`Player.drop_held_item()`），角色不移動也不攻擊。
 - 會擋住遊戲世界滑鼠操作的介面要加入群組 `world_input_blockers`，並提供 `is_blocking_world_input() -> bool`。玩家在點擊和按住左鍵跟隨游標時都會檢查，回傳 true 就不移動也不攻擊。

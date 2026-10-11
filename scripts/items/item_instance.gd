@@ -39,7 +39,24 @@ func is_rune() -> bool:
 	return not rune_id.is_empty()
 
 
-# 回傳這件物品提供的所有修正值，格式見 StatSystem。已插入的符文之後再加。
+# 還有沒插東西的孔，而且對方是符文時才可以插入。符文本身不能被插入。
+func can_insert_rune(rune_item: ItemInstance) -> bool:
+	if is_rune() or rune_item == null or not rune_item.is_rune():
+		return false
+	if not ItemDatabase.has_rune(rune_item.rune_id):
+		return false
+	return socketed_runes.size() < sockets
+
+
+# 把符文插進下一個空孔，成功時回傳 true。插入後不能取出，呼叫端要自己把那顆符文物品丟掉。
+func insert_rune(rune_item: ItemInstance) -> bool:
+	if not can_insert_rune(rune_item):
+		return false
+	socketed_runes.append(rune_item.rune_id)
+	return true
+
+
+# 回傳這件物品提供的所有修正值，格式見 StatSystem：底材、詞綴，再加上已插入的符文。
 # 符文本身不提供任何修正值，要插進裝備才有效果。
 func get_modifiers() -> Array[Dictionary]:
 	var modifiers: Array[Dictionary] = []
@@ -55,6 +72,28 @@ func get_modifiers() -> Array[Dictionary]:
 		modifiers.append({"stat": "defense", "value": float(defense), "type": "flat"})
 
 	modifiers.append_array(get_affix_modifiers())
+	modifiers.append_array(get_rune_modifiers())
+	return modifiers
+
+
+# 只回傳已插入的符文提供的修正值，依插入順序排列。
+# 底材的 slot 是 weapon 時用符文的 weapon_mods，其他都用 armor_mods。
+func get_rune_modifiers() -> Array[Dictionary]:
+	var modifiers: Array[Dictionary] = []
+	if socketed_runes.is_empty():
+		return modifiers
+
+	var mods_field: String = "weapon_mods" if get_slot() == ItemDatabase.SLOT_WEAPON else "armor_mods"
+	for socketed_rune_id: String in socketed_runes:
+		var rune: Dictionary = ItemDatabase.get_rune(socketed_rune_id)
+		for modifier: Variant in rune.get(mods_field, []):
+			if typeof(modifier) == TYPE_DICTIONARY:
+				# JSON 讀進來的 value 可能是整數，統一轉成 float
+				modifiers.append({
+					"stat": modifier["stat"],
+					"value": float(modifier["value"]),
+					"type": modifier["type"],
+				})
 	return modifiers
 
 

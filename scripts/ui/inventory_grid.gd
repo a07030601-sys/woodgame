@@ -14,6 +14,9 @@ const ITEM_FILL_COLOR: Color = Color(0.2, 0.2, 0.25, 1.0)
 const HOVER_COLOR: Color = Color(1.0, 1.0, 1.0, 0.12)
 const PREVIEW_OK_COLOR: Color = Color(0.2, 0.9, 0.2, 0.35)
 const PREVIEW_BLOCKED_COLOR: Color = Color(0.9, 0.2, 0.2, 0.35)
+# 手上的符文可以插進滑鼠底下的物品時，綠色預覽外面多一圈這個顏色的外框，和一般的放置預覽區別
+const INSERT_OUTLINE_COLOR: Color = Color(1.0, 0.75, 0.2, 1.0)
+const INSERT_OUTLINE_WIDTH: float = 3.0
 
 var _inventory: Inventory = null
 var _held: HeldItem = null
@@ -24,6 +27,8 @@ var _hovered_item: ItemInstance = null
 var _preview_item: ItemInstance = null
 var _preview_cell: Vector2i = Vector2i.ZERO
 var _preview_ok: bool = false
+# 預覽是「把手上的符文插進這件物品」時，這裡是那件物品；一般的放置預覽時為 null
+var _preview_insert_target: ItemInstance = null
 
 
 func _ready() -> void:
@@ -62,14 +67,31 @@ func get_drop_cell(local_position: Vector2, item: ItemInstance) -> Vector2i:
 	return Vector2i(((local_position - item_pixel_size * 0.5) / CELL_SIZE).round())
 
 
+# 手上的 item 放到 cell 時如果是「把符文插進那一格的物品」，回傳那件物品，否則回傳 null。
+# 只看背包裡的物品，而且要該物品還有空孔；不能插入時就照一般的放置或互換處理。
+func get_insert_target_at(item: ItemInstance, cell: Vector2i) -> ItemInstance:
+	if _inventory == null or item == null or not item.is_rune():
+		return null
+	var target: ItemInstance = _inventory.get_item_at(cell.x, cell.y)
+	if target == null or not target.can_insert_rune(item):
+		return null
+	return target
+
+
 # 處理在 local_position 的一次左鍵點擊：
 # 手上沒東西時拿起該格的物品；手上有東西時放下，互換出來的物品變成手上的物品。
+# 手上是符文、該格的物品可以插入時改成插入，手上的符文消失。
 func click_at(local_position: Vector2) -> void:
 	if _inventory == null:
 		return
 
 	if _held.is_holding():
 		var cell: Vector2i = get_drop_cell(local_position, _held.item)
+		var insert_target: ItemInstance = get_insert_target_at(_held.item, cell)
+		if insert_target != null:
+			if insert_target.insert_rune(_held.item):
+				_held.take()
+			return
 		var result: Dictionary = _inventory.place_or_swap(_held.item, cell.x, cell.y)
 		if result["success"]:
 			_held.hold(result["swapped_item"])
@@ -119,6 +141,11 @@ func get_preview_item() -> ItemInstance:
 	return _preview_item
 
 
+# 目前的預覽是「插入符文」時，回傳會被插入的那件物品；一般的放置預覽或沒有預覽時回傳 null
+func get_preview_insert_target() -> ItemInstance:
+	return _preview_insert_target
+
+
 func get_hovered_item() -> ItemInstance:
 	return _hovered_item
 
@@ -140,6 +167,7 @@ func _refresh_hover() -> void:
 	var preview_item: ItemInstance = null
 	var preview_cell: Vector2i = Vector2i.ZERO
 	var preview_ok: bool = false
+	var preview_insert_target: ItemInstance = null
 
 	# 畫面沒顯示時一律清空，重新開啟時才不會殘留關閉前的狀態
 	if is_visible_in_tree():
@@ -148,7 +176,11 @@ func _refresh_hover() -> void:
 			if _held.is_holding():
 				preview_item = _held.item
 				preview_cell = get_drop_cell(local_position, preview_item)
-				preview_ok = _inventory.can_place_or_swap(preview_item, preview_cell.x, preview_cell.y)
+				preview_insert_target = get_insert_target_at(preview_item, preview_cell)
+				preview_ok = (
+					preview_insert_target != null
+					or _inventory.can_place_or_swap(preview_item, preview_cell.x, preview_cell.y)
+				)
 			else:
 				var cell: Vector2i = get_cell_at(local_position)
 				hovered_item = _inventory.get_item_at(cell.x, cell.y)
@@ -157,10 +189,12 @@ func _refresh_hover() -> void:
 		preview_item != _preview_item
 		or preview_cell != _preview_cell
 		or preview_ok != _preview_ok
+		or preview_insert_target != _preview_insert_target
 	):
 		_preview_item = preview_item
 		_preview_cell = preview_cell
 		_preview_ok = preview_ok
+		_preview_insert_target = preview_insert_target
 		queue_redraw()
 
 	if hovered_item != _hovered_item:
@@ -187,7 +221,19 @@ func _draw() -> void:
 		if item == _hovered_item:
 			draw_rect(rect, HOVER_COLOR)
 
-	if _preview_item != null:
+	if _preview_insert_target != null and _inventory.has_item(_preview_insert_target):
+		# 插入符文：整件目標物品蓋上綠色，再加一圈外框
+		var target_rect: Rect2 = _get_item_rect(
+			_inventory.get_item_position(_preview_insert_target), _preview_insert_target
+		)
+		draw_rect(target_rect, PREVIEW_OK_COLOR)
+		draw_rect(
+			target_rect.grow(-INSERT_OUTLINE_WIDTH * 0.5),
+			INSERT_OUTLINE_COLOR,
+			false,
+			INSERT_OUTLINE_WIDTH
+		)
+	elif _preview_item != null:
 		var preview_rect: Rect2 = _get_item_rect(_preview_cell, _preview_item)
 		draw_rect(preview_rect, PREVIEW_OK_COLOR if _preview_ok else PREVIEW_BLOCKED_COLOR)
 

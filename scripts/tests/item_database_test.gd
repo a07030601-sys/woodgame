@@ -95,7 +95,7 @@ func _test_serialization() -> void:
 	var item: ItemInstance = ItemDatabase.create_item("leather_cap")
 	item.quality = "magic"
 	item.sockets = 2
-	item.socketed_runes.append("test_rune")
+	item.socketed_runes.append("flint")
 	item.affixes.append(
 		{"id": "test_affix", "modifiers": [{"stat": "life", "value": 5.0, "type": "flat"}]}
 	)
