@@ -1,36 +1,35 @@
 class_name InventoryScreen
 extends CanvasLayer
 
-# 背包畫面：右側面板（上方是裝備欄、下方是背包格子）、手上拿著的物品、物品說明框。
+# 背包畫面：右側面板（上方是裝備欄、下方是背包格子）與物品說明框。
+# 手上拿著的物品（HeldItem）是獨立的一層，不屬於這個畫面，關閉背包時它會留在游標上。
 # 開啟時遊戲不暫停。
 
 # 加入這個群組的節點可以用 is_blocking_world_input() 阻止玩家用滑鼠移動或攻擊
 const WORLD_INPUT_BLOCKERS_GROUP: String = "world_input_blockers"
-const FULL_MESSAGE: String = "背包已滿，手上的物品放不回去"
 
-var _inventory: Inventory = null
+var _held: HeldItem = null
 
 @onready var _panel: PanelContainer = $Panel
 @onready var _equipment_panel: EquipmentPanel = $Panel/Margin/VBox/EquipmentPanel
 @onready var _grid: InventoryGrid = $Panel/Margin/VBox/Grid
-@onready var _message_label: Label = $Panel/Margin/VBox/MessageLabel
-@onready var _message_timer: Timer = $MessageTimer
-@onready var _held: HeldItem = $HeldItem
 @onready var _tooltip: ItemTooltip = $Tooltip
 
 
 func _ready() -> void:
 	add_to_group(WORLD_INPUT_BLOCKERS_GROUP)
 	hide()
-	_message_label.text = ""
-	_message_timer.timeout.connect(_on_message_timer_timeout)
 	_grid.hovered_item_changed.connect(_on_hovered_item_changed)
 	_equipment_panel.hovered_item_changed.connect(_on_hovered_item_changed)
-	_held.changed.connect(_on_held_changed)
 
 	var player: Player = get_tree().get_first_node_in_group("player") as Player
-	if player != null:
-		setup(player.get_inventory(), player.get_equipment())
+	if player == null:
+		return
+	var held: HeldItem = get_tree().get_first_node_in_group(HeldItem.GROUP) as HeldItem
+	if held == null:
+		push_warning("InventoryScreen：找不到 %s 群組的 HeldItem" % HeldItem.GROUP)
+		return
+	setup(player.get_inventory(), player.get_equipment(), held)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -39,10 +38,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func setup(inventory: Inventory, equipment: Equipment) -> void:
-	_inventory = inventory
-	_grid.setup(inventory, _held)
-	_equipment_panel.setup(equipment, _held)
+func setup(inventory: Inventory, equipment: Equipment, held: HeldItem) -> void:
+	_held = held
+	_held.changed.connect(_on_held_changed)
+	_grid.setup(inventory, held)
+	_equipment_panel.setup(equipment, held)
 
 
 func is_open() -> bool:
@@ -60,21 +60,10 @@ func open() -> void:
 	show()
 
 
-# 手上有物品時會先自動放回背包空位；放不下時不關閉並顯示提示，回傳 false
-func close() -> bool:
-	if _held.is_holding():
-		if _inventory == null or not _inventory.add_item_auto(_held.item):
-			_show_message(FULL_MESSAGE)
-			return false
-		_held.take()
-
+# 手上的物品不受影響，會繼續留在游標上
+func close() -> void:
 	_tooltip.hide()
 	hide()
-	return true
-
-
-func get_held_item() -> HeldItem:
-	return _held
 
 
 func get_grid() -> InventoryGrid:
@@ -85,26 +74,11 @@ func get_equipment_panel() -> EquipmentPanel:
 	return _equipment_panel
 
 
-func get_message() -> String:
-	return _message_label.text
-
-
-# 背包開著時，滑鼠在面板上或手上有物品，玩家都不能用滑鼠移動或攻擊
+# 背包開著且滑鼠在面板上時，玩家不能用滑鼠移動或攻擊
 func is_blocking_world_input() -> bool:
 	if not visible:
 		return false
-	if _held.is_holding():
-		return true
 	return _panel.get_global_rect().has_point(get_viewport().get_mouse_position())
-
-
-func _show_message(text: String) -> void:
-	_message_label.text = text
-	_message_timer.start()
-
-
-func _on_message_timer_timeout() -> void:
-	_message_label.text = ""
 
 
 # 背包格子或裝備欄的滑鼠底下物品改變時都會呼叫，兩邊同一時間最多只有一邊有物品

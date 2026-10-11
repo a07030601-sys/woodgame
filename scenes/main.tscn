@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/monster.tscn" id="2_monster"]
@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://scripts/monsters/monster_spawner.gd" id="4_spawner"]
 [ext_resource type="PackedScene" path="res://scenes/ui/stats_panel.tscn" id="5_stats_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_screen.tscn" id="6_inventory_screen"]
+[ext_resource type="PackedScene" path="res://scenes/ui/held_item.tscn" id="7_held_item"]
+[ext_resource type="PackedScene" path="res://scenes/ui/screen_message.tscn" id="8_screen_message"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3_main")
@@ -67,3 +69,7 @@ vertical_alignment = 1
 [node name="StatsPanel" parent="." instance=ExtResource("5_stats_panel")]
 
 [node name="InventoryScreen" parent="." instance=ExtResource("6_inventory_screen")]
+
+[node name="ScreenMessage" parent="." instance=ExtResource("8_screen_message")]
+
+[node name="HeldItemLayer" parent="." instance=ExtResource("7_held_item")]

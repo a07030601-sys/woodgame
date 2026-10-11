@@ -4,6 +4,7 @@ extends TestBase
 # 畫面長相、游標跟隨、預覽顏色無法在這裡驗證，要在編輯器裡實際操作。
 
 const SCREEN_SCENE: PackedScene = preload("res://scenes/ui/inventory_screen.tscn")
+const HELD_ITEM_SCENE: PackedScene = preload("res://scenes/ui/held_item.tscn")
 const TEST_SEED: int = 20261010
 const CELL: float = InventoryGrid.CELL_SIZE
 
@@ -11,6 +12,8 @@ var _inventory: Inventory = null
 var _equipment: Equipment = null
 var _screen: InventoryScreen = null
 var _grid: InventoryGrid = null
+# 手上的物品是獨立於背包畫面的一層
+var _held_layer: CanvasLayer = null
 var _held: HeldItem = null
 var _equipment_panel: EquipmentPanel = null
 
@@ -28,18 +31,22 @@ func _run_tests() -> void:
 	await _test_preview_matches_hand()
 
 
-# 每組測試都用全新的背包與畫面
+# 每組測試都用全新的背包、畫面與手上的物品
 func _reset() -> void:
 	if _screen != null:
 		remove_child(_screen)
 		_screen.free()
+		remove_child(_held_layer)
+		_held_layer.free()
 	_inventory = Inventory.new()
 	_equipment = Equipment.new()
+	_held_layer = HELD_ITEM_SCENE.instantiate() as CanvasLayer
+	add_child(_held_layer)
+	_held = _held_layer.get_node("HeldItem") as HeldItem
 	_screen = SCREEN_SCENE.instantiate() as InventoryScreen
 	add_child(_screen)
-	_screen.setup(_inventory, _equipment)
+	_screen.setup(_inventory, _equipment, _held)
 	_grid = _screen.get_grid()
-	_held = _screen.get_held_item()
 	_equipment_panel = _screen.get_equipment_panel()
 
 
@@ -61,7 +68,7 @@ func _test_pick_up_and_place() -> void:
 		"點背包裡的物品會拿到手上並從背包移除",
 		_held.item == cap and not _inventory.has_item(cap) and _inventory.get_items().is_empty()
 	)
-	check("手上有物品時會阻止玩家的滑鼠操作", _screen.is_blocking_world_input())
+	check("手上的物品所在的那一層畫在背包畫面之上", _held_layer.layer > _screen.layer)
 
 	# 物品中心對準游標，所以要放到左上角 (4, 1) 就點在物品中央
 	_grid.click_at(_item_center(4, 1, cap))
@@ -115,12 +122,16 @@ func _test_close() -> void:
 	var sword: ItemInstance = ItemDatabase.create_item("short_sword")
 	_held.hold(sword)
 
-	check("手上有物品時關閉會成功", _screen.close() and not _screen.is_open())
+	_screen.close()
+	check("手上有物品時也能關閉", not _screen.is_open())
 	check(
-		"關閉時手上的物品自動放回背包空位",
-		not _held.is_holding() and _inventory.get_item_position(sword) == Vector2i(0, 0)
+		"關閉後物品留在手上，沒有放回背包",
+		_held.item == sword and _held.visible and _inventory.get_items().is_empty()
 	)
 	check("關閉後不再阻止玩家的滑鼠操作", not _screen.is_blocking_world_input())
+
+	_screen.open()
+	check("重新開啟後手上還是同一件物品", _held.item == sword)
 
 	_reset()
 	_screen.open()
@@ -128,14 +139,11 @@ func _test_close() -> void:
 		_inventory.add_item_auto(ItemDatabase.create_item("leather_cap"))
 	var extra: ItemInstance = ItemDatabase.create_item("leather_cap")
 	_held.hold(extra)
-	check("背包放不下時不關閉", not _screen.close() and _screen.is_open())
+	_screen.close()
 	check(
-		"放不下時物品留在手上並顯示提示",
-		_held.item == extra and not _screen.get_message().is_empty()
+		"背包滿的時候手上有物品也能關閉，物品留在手上",
+		not _screen.is_open() and _held.item == extra and not _inventory.has_item(extra)
 	)
-
-	_inventory.remove(_inventory.get_item_at(0, 0))
-	check("空出位置後可以關閉", _screen.close() and not _screen.is_open() and _inventory.has_item(extra))
 
 	_reset()
 	_screen.toggle()
@@ -226,7 +234,12 @@ func _test_equipment_panel() -> void:
 	_equipment_panel.click_at(Vector2(2.0, 2.0))
 	check("點在欄位以外的地方不會有反應", _held.item == sword and _equipment.get_item("weapon") == axe)
 
-	check("手上有物品時關閉，物品收進背包而不是穿上", _screen.close() and _inventory.has_item(sword))
+	_screen.close()
+	check(
+		"手上有物品時關閉，物品不會收進背包也不會穿上",
+		_held.item == sword and not _inventory.has_item(sword) and _equipment.get_item("weapon") == axe
+	)
+	_held.take()
 	_screen.open()
 
 	_equipment_panel.click_at(_equipment_panel.get_slot_center("weapon"))
@@ -287,13 +300,15 @@ func _test_preview_matches_hand() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 
-	_inventory.remove(cap)
-	check("手上有物品時關閉成功", _screen.close())
-	check("關閉後沒有預覽也沒有滑鼠底下的物品", _grid.get_preview_item() == null and _grid.get_hovered_item() == null)
+	_screen.close()
+	check(
+		"關閉後物品還在手上，但格子沒有預覽也沒有滑鼠底下的物品",
+		_held.item == sword and _grid.get_preview_item() == null and _grid.get_hovered_item() == null
+	)
 	_screen.open()
 	check(
-		"重新開啟後手上是空的，不會殘留關閉前的預覽",
-		not _held.is_holding() and _grid.get_preview_item() == null
+		"重新開啟後立刻顯示手上那件物品的預覽",
+		_held.item == sword and _grid.get_preview_item() == sword
 	)
 	await get_tree().physics_frame
 	await get_tree().process_frame

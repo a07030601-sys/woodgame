@@ -5,6 +5,7 @@ extends Node
 const BASES_PATH: String = "res://data/bases.json"
 const AFFIXES_PATH: String = "res://data/affixes.json"
 const RARE_NAMES_PATH: String = "res://data/rare_names.json"
+const DROP_TABLES_PATH: String = "res://data/drop_tables.json"
 
 const SLOT_WEAPON: String = "weapon"
 const VALID_SLOTS: Array[String] = ["weapon", "helm", "armor", "gloves", "boots"]
@@ -17,6 +18,8 @@ const REQUIRED_AFFIX_FIELDS: Array[String] = [
 ]
 const REQUIRED_AFFIX_MODIFIER_FIELDS: Array[String] = ["stat", "type", "min", "max"]
 
+const REQUIRED_DROP_TABLE_FIELDS: Array[String] = ["drop_chance", "quality_weights"]
+
 # 底材 id -> 底材資料
 var _bases: Dictionary = {}
 # 詞綴 id -> 詞綴資料
@@ -25,12 +28,15 @@ var _affixes: Dictionary = {}
 var _rare_first_words: Array[String] = []
 # 底材 type -> 第二段字詞的 Array[String]
 var _rare_second_words: Dictionary = {}
+# 掉落表 id -> 掉落表資料
+var _drop_tables: Dictionary = {}
 
 
 func _ready() -> void:
 	_load_bases()
 	_load_affixes()
 	_load_rare_names()
+	_load_drop_tables()
 
 
 # 找不到時警告並回傳空的 Dictionary
@@ -91,6 +97,19 @@ func get_rare_second_words(base_type: String) -> Array[String]:
 	if _rare_second_words.has(base_type):
 		words.assign(_rare_second_words[base_type])
 	return words
+
+
+# 掉落表：{"drop_chance": 掉落機率（百分比）, "quality_weights": {品質: 權重}}。
+# 找不到時警告並回傳空的 Dictionary
+func get_drop_table(id: String) -> Dictionary:
+	if not _drop_tables.has(id):
+		push_warning("ItemDatabase：找不到掉落表 %s" % id)
+		return {}
+	return _drop_tables[id]
+
+
+func has_drop_table(id: String) -> bool:
+	return _drop_tables.has(id)
 
 
 # 建立普通品質的物品實例，找不到底材時回傳 null。
@@ -163,6 +182,17 @@ func _load_rare_names() -> void:
 				"ItemDatabase：%s 的 second_words 沒有 %s（底材 %s 會用到）"
 				% [RARE_NAMES_PATH, base["type"], base["id"]]
 			)
+
+
+func _load_drop_tables() -> void:
+	_drop_tables.clear()
+	var data: Variant = _load_json(DROP_TABLES_PATH, TYPE_DICTIONARY)
+	if data == null:
+		return
+
+	for table_id: Variant in data:
+		if _is_valid_drop_table(str(table_id), data[table_id]):
+			_drop_tables[str(table_id)] = data[table_id]
 
 
 func _read_word_list(list: Variant, field: String) -> Array[String]:
@@ -324,6 +354,44 @@ func _is_valid_affix_modifier(modifier: Variant, affix_id: String) -> bool:
 		return false
 	if modifier["min"] > modifier["max"]:
 		push_warning("ItemDatabase：略過修正值 min 大於 max 的詞綴 %s" % affix_id)
+		return false
+
+	return true
+
+
+# 有問題的掉落表只警告並略過，不讓遊戲崩潰
+func _is_valid_drop_table(table_id: String, entry: Variant) -> bool:
+	if typeof(entry) != TYPE_DICTIONARY:
+		push_warning("ItemDatabase：略過不是物件的掉落表 %s" % table_id)
+		return false
+
+	for field: String in REQUIRED_DROP_TABLE_FIELDS:
+		if not entry.has(field):
+			push_warning("ItemDatabase：略過缺少 %s 欄位的掉落表 %s" % [field, table_id])
+			return false
+
+	var drop_chance: Variant = entry["drop_chance"]
+	if not _is_number(drop_chance) or drop_chance < 0 or drop_chance > 100:
+		push_warning("ItemDatabase：略過 drop_chance 不在 0～100 之間的掉落表 %s" % table_id)
+		return false
+
+	var quality_weights: Variant = entry["quality_weights"]
+	if typeof(quality_weights) != TYPE_DICTIONARY:
+		push_warning("ItemDatabase：略過 quality_weights 不是「品質 -> 權重」的掉落表 %s" % table_id)
+		return false
+
+	var total_weight: float = 0.0
+	for quality: Variant in quality_weights:
+		if typeof(quality) != TYPE_STRING or not ItemInstance.QUALITIES.has(quality):
+			push_warning("ItemDatabase：略過掉落表 %s，不認得的品質 %s" % [table_id, str(quality)])
+			return false
+		var weight: Variant = quality_weights[quality]
+		if not _is_number(weight) or weight < 0:
+			push_warning("ItemDatabase：略過掉落表 %s，品質 %s 的權重不是 0 以上的數字" % [table_id, quality])
+			return false
+		total_weight += float(weight)
+	if total_weight <= 0.0:
+		push_warning("ItemDatabase：略過所有品質權重都是 0 的掉落表 %s" % table_id)
 		return false
 
 	return true

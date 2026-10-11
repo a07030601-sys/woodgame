@@ -63,14 +63,27 @@
 - 玩家擁有一個 `Inventory`（`Player.get_inventory()`）。`toggle_inventory`（I 鍵）開關背包畫面，遊戲不暫停。
 - `scenes/ui/inventory_screen.tscn`（`InventoryScreen`）由幾個獨立的部分組成，腳本都在 `scripts/ui/`：
   - `InventoryGrid`：背包格子的顯示與點擊，每格 `CELL_SIZE` 像素。資料仍在 `Inventory`，格子只負責畫面。
-  - `HeldItem`：「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包；之後的裝備欄和丟到地上都要共用這一個，用 `hold()` / `take()` 存取。
   - `ItemTooltip`：物品說明框，內容由 `ItemTooltip.build_lines(item)` 產生。
   - `EquipmentPanel`：面板上方的 5 個裝備欄，排列參考暗黑 2（頭盔在上方中間，身體護甲在中間，武器在左側，手套在左下，靴子在右下）。欄位位置定義在 `EquipmentPanel.SLOT_RECTS`。
   - 格子和裝備欄的預覽狀態都要「自己記住是為哪件物品算的」，並在資料一變動時立刻重算，不能等到 `_draw` 才去讀手上的物品。
+- `HeldItem`（`scenes/ui/held_item.tscn`）是「手上拿著的物品」，同一時間最多一件，跟著游標移動。它不屬於背包，也不屬於背包畫面：放在自己的 `CanvasLayer`（layer 100），永遠畫在最上層。背包格子、裝備欄和丟到地上都共用這一個，用群組 `HeldItem.GROUP` 找到它，用 `hold()` / `take()` 存取。
 - 手上的物品以中心對準游標；放下時用 `InventoryGrid.get_drop_cell()` 換算左上角的格子。
-- 關閉背包時手上的物品會自動放回空位；放不下時不關閉並顯示提示。
+- 關閉背包時手上的物品留在游標上，不會自動放回背包。
+- 手上有物品時點遊戲世界，會把物品丟在角色腳邊變成地上物品（`Player.drop_held_item()`），角色不移動也不攻擊。
 - 會擋住遊戲世界滑鼠操作的介面要加入群組 `world_input_blockers`，並提供 `is_blocking_world_input() -> bool`。玩家在點擊和按住左鍵跟隨游標時都會檢查，回傳 true 就不移動也不攻擊。
 - 屬性的中文名稱在 `StatSystem.STAT_DISPLAY_NAMES`；修正值轉成文字一律用 `StatSystem.format_modifier()`（例如「+5 力量」「+12% 攻擊速度」）。
+
+## 掉寶與撿取
+
+- `data/drop_tables.json`：「掉落表 id -> 掉落表」，目前只有 `default`。每張表的欄位：
+  - `drop_chance`：掉落機率，以百分比表示（`40` 代表 40%）。
+  - `quality_weights`：「品質 -> 權重」，權重為 0 或沒列出的品質不會出現。
+  - 由 `ItemDatabase` 讀取與檢查，用 `get_drop_table(id)` 查詢；機率與權重不寫死在程式裡。
+- `DropRoller.roll(table_id, rng)`（`scripts/items/drop_roller.gd`）擲一次掉落，沒掉落時回傳 null；所有隨機都來自傳入的 `rng`。掉落時底材從所有底材平均抽選，再交給 `ItemGenerator.generate()`。
+- 怪物死亡時用 `Monster.drop_table_id`（預設 `default`）擲骰，掉落的物品放在死亡位置附近。
+- `GroundItem`（`scenes/ground_item.tscn`）是地上物品：以品質顏色顯示物品名稱，滑鼠滑過時變亮。用 `GroundItem.spawn(parent, item, 位置)` 建立，加到主場景底下；它只負責顯示，點擊與撿取都由 `Player` 處理。
+- 點擊地上物品時角色走過去（`Player.move_to_pick_up()`），抵達後呼叫 `Player.pick_up()`：`add_item_auto` 成功就從地上移除；背包滿了就留在地上，並發出 `Player.inventory_full`。
+- `ScreenMessage`（`scenes/ui/screen_message.tscn`）是畫面上方的短暫提示文字，收到 `inventory_full` 時顯示「背包已滿」。
 
 ## 物品命名規則
 
@@ -140,7 +153,6 @@
 
 ## 待辦（暫不實作）
 
-- 任務 4-6：關閉背包時，手上的物品要留在游標上（暗黑 2 行為），點擊遊戲世界時丟到地上；手上物品的顯示要獨立於背包畫面。
 - 獨特物品（階段 7）
 - 防禦的減傷公式（階段 7）
 - 物品等級與詞綴等級需求（階段 7）

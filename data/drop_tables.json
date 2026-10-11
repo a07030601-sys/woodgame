@@ -1,0 +1,10 @@
+{
+	"default": {
+		"drop_chance": 40,
+		"quality_weights": {
+			"normal": 60,
+			"magic": 30,
+			"rare": 10
+		}
+	}
+}

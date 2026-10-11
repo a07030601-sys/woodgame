@@ -23,6 +23,8 @@ enum State { IDLE, PATROL, CHASE, ATTACK }
 @export var patrol_speed: float = 60.0
 @export var idle_time_min: float = 1.0
 @export var idle_time_max: float = 3.0
+# 死亡時用來擲掉落的掉落表 id（data/drop_tables.json）
+@export var drop_table_id: String = DropRoller.DEFAULT_TABLE_ID
 # 開啟時才 print 狀態切換與巡邏點資訊
 @export var debug_ai: bool = false
 
@@ -33,6 +35,8 @@ const PATROL_TIMEOUT_MARGIN: float = 1.0
 # 前搖期間外觀逐漸放大到這個倍率，當作出手提示
 const WINDUP_SCALE: float = 1.4
 const FLASH_DURATION: float = 0.15
+# 掉落的物品放在死亡位置周圍這個半徑內的隨機位置
+const DROP_SCATTER_RADIUS: float = 24.0
 const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://scenes/ui/damage_number.tscn")
 const DAMAGE_NUMBER_OFFSET: Vector2 = Vector2(0.0, -38.0)
 const DAMAGE_NUMBER_COLOR: Color = Color.WHITE
@@ -246,5 +250,18 @@ func _on_damage_taken(amount: int) -> void:
 
 
 func _on_died() -> void:
+	_drop_loot()
 	died.emit()
 	queue_free()
+
+
+# 依掉落表擲骰，有掉落就在死亡位置附近放一件地上物品。物品加到主場景，怪物被移除後才會留著。
+func _drop_loot() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.randomize()
+	var item: ItemInstance = DropRoller.roll(drop_table_id, rng)
+	if item == null:
+		return
+
+	var offset: Vector2 = Vector2.from_angle(rng.randf() * TAU) * rng.randf() * DROP_SCATTER_RADIUS
+	GroundItem.spawn(get_tree().current_scene, item, global_position + offset)

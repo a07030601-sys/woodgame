@@ -7,6 +7,7 @@ extends RefCounted
 const QUALITY_NORMAL: String = "normal"
 const QUALITY_MAGIC: String = "magic"
 const QUALITY_RARE: String = "rare"
+const QUALITIES: Array[String] = [QUALITY_NORMAL, QUALITY_MAGIC, QUALITY_RARE]
 
 const COLOR_NORMAL: Color = Color(1.0, 1.0, 1.0, 1.0)
 const COLOR_MAGIC: Color = Color(0.45, 0.55, 1.0, 1.0)

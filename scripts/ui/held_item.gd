@@ -2,9 +2,12 @@ class_name HeldItem
 extends Control
 
 # 「手上拿著的物品」：同一時間最多一件，顯示時跟著滑鼠游標移動。
-# 它不屬於背包，背包格子、之後的裝備欄和丟到地上都共用這一個。
+# 它不屬於背包，也不屬於背包畫面：放在自己的 CanvasLayer（scenes/ui/held_item.tscn），永遠畫在最上層，
+# 背包關著時也看得到。背包格子、裝備欄和丟到地上都共用這一個，用群組 GROUP 找到它。
 
 signal changed
+
+const GROUP: String = "held_item"
 
 var item: ItemInstance = null
 

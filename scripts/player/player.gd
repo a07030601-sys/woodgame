@@ -2,13 +2,17 @@ class_name Player
 extends CharacterBody2D
 
 signal died
+# 走到地上物品旁邊要撿，但背包放不下時發出
+signal inventory_full
 
 # 與攻擊目標中心點的距離，需大於雙方碰撞體相加的大小才碰得到
 @export var attack_range: float = 48.0
+# 與地上物品的距離在此值以內才撿得到
+@export var pickup_range: float = 24.0
 # 開場時自動生成普通品質並穿上的裝備（底材 id）。欄位已被佔用的會放進背包。
 @export var starting_equipment: Array[String] = ["short_sword"]
-# 除錯用，任務 4-6 有掉寶後關閉：開場時在背包放幾件隨機的魔法與稀有裝備
-@export var debug_start_items: bool = true
+# 除錯用：開場時在背包放幾件隨機的魔法與稀有裝備
+@export var debug_start_items: bool = false
 
 # 與目標的距離小於此值就視為抵達，避免在目標點來回抖動
 const ARRIVE_DISTANCE: float = 4.0
@@ -18,8 +22,11 @@ const ENEMIES_LAYER_MASK: int = 1 << 1
 const MIN_ATTACK_SPEED: float = 0.01
 # 裝備在屬性元件裡的來源名稱是這個前綴加上欄位名，例如 equip_weapon
 const EQUIPMENT_SOURCE_PREFIX: String = "equip_"
-# 除錯用，任務 4-6 有掉寶後關閉
+# 除錯用
 const DEBUG_START_ITEM_COUNT: int = 6
+# 從手上丟下的物品放在腳邊：角色下方這個位置，再加上一點隨機偏移，連續丟的物品才不會完全疊在一起
+const DROP_AT_FEET_OFFSET: Vector2 = Vector2(0.0, 30.0)
+const DROP_AT_FEET_SCATTER: float = 14.0
 # 這個群組裡的節點（例如背包畫面）可以阻止玩家用滑鼠移動或攻擊
 const WORLD_INPUT_BLOCKERS_GROUP: String = "world_input_blockers"
 const DEAD_COLOR: Color = Color(0.5, 0.5, 0.5, 1.0)
@@ -31,6 +38,12 @@ var _target_position: Vector2 = Vector2.ZERO
 var _has_target: bool = false
 var _is_following_cursor: bool = false
 var _attack_target: Monster = null
+# 正要走過去撿的地上物品
+var _pickup_target: GroundItem = null
+# 滑鼠底下、目前顯示為變亮的地上物品
+var _hovered_ground_item: GroundItem = null
+# 手上拿著的物品（獨立的一層），用到時才從群組找
+var _held: HeldItem = null
 var _attack_cooldown: float = 0.0
 var _base_color: Color = Color.WHITE
 var _inventory: Inventory = Inventory.new()
@@ -62,14 +75,27 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("move_click"):
 		if _is_world_input_blocked():
 			return
+		# 手上有物品時，點遊戲世界是把它丟在腳邊，不移動也不攻擊
+		if _is_holding_item():
+			drop_held_item()
+			return
 		var click_position: Vector2 = get_global_mouse_position()
+		_pickup_target = null
 		_attack_target = _find_enemy_at(click_position)
 		if _attack_target != null:
 			_is_following_cursor = false
 			_has_target = false
+			return
+		var ground_item: GroundItem = GroundItem.find_at(get_tree(), click_position)
+		if ground_item != null:
+			move_to_pick_up(ground_item)
 		else:
 			_is_following_cursor = true
 			_set_target(click_position)
+
+
+func _process(_delta: float) -> void:
+	_update_hovered_ground_item()
 
 
 func _physics_process(delta: float) -> void:
@@ -79,6 +105,11 @@ func _physics_process(delta: float) -> void:
 		_process_attack(delta)
 		return
 	_attack_target = null
+
+	if _is_pickup_target_on_ground():
+		_process_pickup(delta)
+		return
+	_pickup_target = null
 
 	if _is_following_cursor:
 		# 按住左鍵時游標移到介面上也要停止跟隨
@@ -114,6 +145,36 @@ func get_equipment() -> Equipment:
 	return _equipment
 
 
+# 走向地上物品，抵達後自動撿起（見 pick_up）。會取代目前的移動與攻擊目標。
+func move_to_pick_up(ground_item: GroundItem) -> void:
+	_clear_targets()
+	_pickup_target = ground_item
+
+
+# 把地上物品放進背包。成功就從地上移除並回傳 true；
+# 背包放不下時物品留在地上，發出 inventory_full 並回傳 false。
+func pick_up(ground_item: GroundItem) -> bool:
+	if not _inventory.add_item_auto(ground_item.item):
+		inventory_full.emit()
+		return false
+	ground_item.queue_free()
+	return true
+
+
+# 把手上的物品丟在腳邊變成地上物品，回傳該地上物品；手上沒有物品時回傳 null
+func drop_held_item() -> GroundItem:
+	if not _is_holding_item():
+		return null
+	var item: ItemInstance = _held.take()
+	var scatter: Vector2 = Vector2(
+		randf_range(-DROP_AT_FEET_SCATTER, DROP_AT_FEET_SCATTER),
+		randf_range(-DROP_AT_FEET_SCATTER, DROP_AT_FEET_SCATTER) * 0.5
+	)
+	return GroundItem.spawn(
+		get_tree().current_scene, item, global_position + DROP_AT_FEET_OFFSET + scatter
+	)
+
+
 func revive(spawn_position: Vector2) -> void:
 	global_position = spawn_position
 	_health.revive()
@@ -144,6 +205,40 @@ func _roll_damage() -> int:
 # 怪物死亡後會被移除，目標可能已被釋放或正等待釋放
 func _is_attack_target_alive() -> bool:
 	return is_instance_valid(_attack_target) and not _attack_target.is_queued_for_deletion()
+
+
+# 物品被撿走後會被移除，目標可能已被釋放或正等待釋放
+func _is_pickup_target_on_ground() -> bool:
+	return is_instance_valid(_pickup_target) and not _pickup_target.is_queued_for_deletion()
+
+
+# 走到物品旁邊就撿一次；不論撿不撿得起來都停下，背包滿了要再點一次才會重試
+func _process_pickup(delta: float) -> void:
+	if not _move_toward(_pickup_target.global_position, pickup_range, delta):
+		return
+	pick_up(_pickup_target)
+	_pickup_target = null
+
+
+# 讓滑鼠底下的地上物品變亮。滑鼠在介面上、手上拿著物品或已死亡時都不顯示。
+func _update_hovered_ground_item() -> void:
+	var hovered: GroundItem = null
+	if not is_dead() and not _is_holding_item() and not _is_world_input_blocked():
+		hovered = GroundItem.find_at(get_tree(), get_global_mouse_position())
+
+	if is_instance_valid(_hovered_ground_item):
+		if hovered == _hovered_ground_item:
+			return
+		_hovered_ground_item.set_hovered(false)
+	_hovered_ground_item = hovered
+	if hovered != null:
+		hovered.set_hovered(true)
+
+
+func _is_holding_item() -> bool:
+	if not is_instance_valid(_held):
+		_held = get_tree().get_first_node_in_group(HeldItem.GROUP) as HeldItem
+	return _held != null and _held.is_holding()
 
 
 # 朝 target 直線移動，進入 stop_distance 內就停下並回傳 true
@@ -207,7 +302,7 @@ func _add_starting_equipment() -> void:
 		_inventory.add_item_auto(item)
 
 
-# 除錯用，任務 4-6 有掉寶後關閉
+# 除錯用
 func _add_debug_start_items() -> void:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.randomize()
@@ -250,6 +345,7 @@ func _on_died() -> void:
 
 func _clear_targets() -> void:
 	_attack_target = null
+	_pickup_target = null
 	_has_target = false
 	_is_following_cursor = false
 	velocity = Vector2.ZERO
