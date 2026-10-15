@@ -1,3 +1,10 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# OS / editor junk
+Thumbs.db
+desktop.ini
+.DS_Store
+*.tmp
+
